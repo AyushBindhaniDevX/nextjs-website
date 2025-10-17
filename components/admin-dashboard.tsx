@@ -41,19 +41,19 @@ function EditForm({ type, data, companies, onSave, onCancel }: {
   onSave: (data: any) => void
   onCancel: () => void
 }) {
-  const [formData, setFormData] = useState(data)
+  const [formData, setFormData] = useState<any>(data || {})
 
   useEffect(() => {
-    const initialData = { ...data };
+    const initialData = { ...(data || {}) };
     if (type === 'internships') {
-      initialData.responsibilities = arrayToString(data.responsibilities);
-      initialData.requiredSkills = arrayToString(data.requiredSkills);
-      initialData.benefits = arrayToString(data.benefits);
+      initialData.responsibilities = arrayToString(data?.responsibilities);
+      initialData.requiredSkills = arrayToString(data?.requiredSkills);
+      initialData.benefits = arrayToString(data?.benefits);
     }
     if (type === 'events') {
-        initialData.address = data.location?.address || '';
-        initialData.latitude = data.location?.latitude || '';
-        initialData.longitude = data.location?.longitude || '';
+        initialData.address = data?.location?.address || '';
+        initialData.latitude = data?.location?.latitude || '';
+        initialData.longitude = data?.location?.longitude || '';
     }
     setFormData(initialData);
   }, [data, type]);
@@ -144,6 +144,7 @@ function EditForm({ type, data, companies, onSave, onCancel }: {
         { name: 'firstName', label: 'First Name', type: 'text' },
         { name: 'lastName', label: 'Last Name', type: 'text' },
         { name: 'email', label: 'Email', type: 'email' },
+        { name: 'username', label: 'Username', type: 'text' },
       ]
     }
     return fields[type as keyof typeof fields] || [];
@@ -217,7 +218,7 @@ function EditForm({ type, data, companies, onSave, onCancel }: {
 
       <div className="flex gap-3 pt-6">
         <button type="submit" className="flex-1 flex items-center justify-center gap-3 bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-3 rounded-lg font-black neo-border neo-button text-lg">
-          <Save size={18} /> {editingItem?.id ? 'UPDATE' : 'CREATE'}
+          <Save size={18} /> {data?.id ? 'UPDATE' : 'CREATE'}
         </button>
         <button type="button" onClick={onCancel} className="bg-white hover:bg-gray-100 px-6 py-3 rounded-lg neo-border font-bold">
           <X size={18} />
@@ -235,6 +236,7 @@ export default function AdminDashboard() {
   const [editingItem, setEditingItem] = useState<any>(null)
   const [data, setData] = useState<any>({ events: {}, companies: {}, internships: {}, users: {} })
   const [searchQuery, setSearchQuery] = useState("")
+  const [clerkUsers, setClerkUsers] = useState<any[]>([])
   const router = useRouter()
 
   useEffect(() => {
@@ -243,15 +245,30 @@ export default function AdminDashboard() {
         events: ref(database, 'events'),
         companies: ref(database, 'companies'),
         internships: ref(database, 'internships'),
-        users: ref(database, 'users'),
     }
     const unsubscribes = Object.entries(refs).map(([key, dbRef]) => 
         onValue(dbRef, (snapshot) => {
             setData((prev: any) => ({ ...prev, [key]: snapshot.val() || {} }))
         })
     );
+
+    // Fetch Clerk users
+    fetchClerkUsers();
+
     return () => unsubscribes.forEach(unsub => unsub());
   }, [])
+
+  const fetchClerkUsers = async () => {
+    try {
+      const response = await fetch('/api/clerk-users');
+      if (response.ok) {
+        const users = await response.json();
+        setClerkUsers(users);
+      }
+    } catch (error) {
+      console.error('Error fetching Clerk users:', error);
+    }
+  }
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
@@ -294,11 +311,27 @@ export default function AdminDashboard() {
     setSearchQuery("");
   }
 
-  const filteredData = Object.entries(data[activeTab] || {}).filter(([, item]: [string, any]) => {
+  // Get data based on active tab
+  const getActiveData = () => {
+    if (activeTab === 'users') {
+      return clerkUsers.map((user: any) => ({
+        id: user.id,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        email: user.email_addresses?.[0]?.email_address,
+        username: user.username,
+        fullName: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
+        createdAt: new Date(user.created_at).toLocaleDateString()
+      }));
+    }
+    return data[activeTab] || {};
+  }
+
+  const filteredData = Object.entries(getActiveData()).filter(([, item]: [string, any]) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
-    const title = (item.title || item.name || item.fullName || '').toLowerCase();
-    const description = (item.description || item.email || item.location || item.category || '').toLowerCase();
+    const title = (item.title || item.name || item.fullName || item.email || '').toLowerCase();
+    const description = (item.description || item.email || item.location || item.category || item.username || '').toLowerCase();
     return title.includes(query) || description.includes(query);
   })
 
@@ -350,7 +383,6 @@ export default function AdminDashboard() {
             </div>
             <div>
               <h1 className="text-2xl font-black">EXOSPHERE ADMIN</h1>
-              <p className="text-sm text-muted-foreground font-bold">NEO-BRUTALISM EDITION</p>
             </div>
           </div>
           <button onClick={handleLogout} className="flex items-center gap-2 bg-card hover:bg-gray-100 px-4 py-2 rounded-lg font-bold neo-border neo-button">
@@ -370,7 +402,7 @@ export default function AdminDashboard() {
             <StatCard title="Total Events" value={formatCount(data.events)} icon={Calendar} />
             <StatCard title="Total Companies" value={formatCount(data.companies)} icon={Building2} />
             <StatCard title="Total Internships" value={formatCount(data.internships)} icon={Briefcase} />
-            <StatCard title="Total Users" value={formatCount(data.users)} icon={Users} />
+            <StatCard title="Total Users" value={clerkUsers.length} icon={Users} />
           </div>
         </section>
 
@@ -415,12 +447,14 @@ export default function AdminDashboard() {
                   className="w-full pl-12 p-3 rounded-lg bg-white neo-border focus:ring-2 focus:ring-primary font-medium" 
                 />
               </div>
-              <button 
-                onClick={() => setEditingItem({})} 
-                className="w-full sm:w-auto flex items-center justify-center gap-3 bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-3 rounded-lg font-black neo-border neo-button"
-              >
-                <Plus size={20} /> CREATE NEW
-              </button>
+              {activeTab !== 'users' && (
+                <button 
+                  onClick={() => setEditingItem({})} 
+                  className="w-full sm:w-auto flex items-center justify-center gap-3 bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-3 rounded-lg font-black neo-border neo-button"
+                >
+                  <Plus size={20} /> CREATE NEW
+                </button>
+              )}
             </div>
 
             {/* Data Grid */}
@@ -439,21 +473,25 @@ export default function AdminDashboard() {
                     )}
                     <div className="p-6">
                       <div className="flex justify-between items-start mb-4">
-                        <h3 className="font-black text-xl pr-4 line-clamp-2">{item.title || item.name || item.fullName}</h3>
-                        <div className="flex gap-2 flex-shrink-0">
-                          <button 
-                            onClick={() => setEditingItem({ ...item, id })} 
-                            className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md neo-shadow-sm transition-colors"
-                          >
-                            <Edit size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleDelete(activeTab, id)} 
-                            className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md neo-shadow-sm transition-colors"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
+                        <h3 className="font-black text-xl pr-4 line-clamp-2">
+                          {item.title || item.name || item.fullName || item.email}
+                        </h3>
+                        {activeTab !== 'users' && (
+                          <div className="flex gap-2 flex-shrink-0">
+                            <button 
+                              onClick={() => setEditingItem({ ...item, id })} 
+                              className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md neo-shadow-sm transition-colors"
+                            >
+                              <Edit size={16} />
+                            </button>
+                            <button 
+                              onClick={() => handleDelete(activeTab, id)} 
+                              className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md neo-shadow-sm transition-colors"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        )}
                       </div>
                       
                       {activeTab === 'events' && item.category && (
@@ -470,6 +508,17 @@ export default function AdminDashboard() {
                         <p className="text-sm font-black text-secondary mb-3 flex items-center gap-2">
                           <Building2 size={16} /> {data.companies[item.companyId]?.name}
                         </p>
+                      )}
+
+                      {activeTab === 'users' && (
+                        <>
+                          <p className="text-sm text-muted-foreground mb-2 font-medium">
+                            Username: {item.username || 'N/A'}
+                          </p>
+                          <p className="text-sm text-muted-foreground mb-3 font-medium">
+                            Joined: {item.createdAt}
+                          </p>
+                        </>
                       )}
                       
                       <p className="text-sm text-muted-foreground line-clamp-2 font-medium">
