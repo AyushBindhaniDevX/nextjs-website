@@ -4,28 +4,33 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { database } from "@/lib/firebase"
 import { ref, onValue, remove, set, push } from "firebase/database"
-import { LogOut, Plus, Edit, Trash2, Calendar, Briefcase, Building2, Users, Save, X, Search, BarChart3, MapPin, Zap, Rocket, Shield, Database, Sparkles } from "lucide-react"
+import { 
+  LogOut, Plus, Edit3, Trash2, Calendar, Briefcase, Building2, Users, 
+  Save, X, Search, BarChart3, MapPin, Rocket, Shield, Database, 
+  Sparkles, ChevronRight, LayoutDashboard, Globe, Settings 
+} from "lucide-react"
 
 const PIN = "5152"
-const PLACEHOLDER_IMAGE = "https://via.placeholder.com/400x200.png/e0e0e0/000000?text=No+Image"
+const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=800&auto=format&fit=crop"
 
-// --- Helper Functions & Components ---
+// --- Helper Components ---
 
-const formatCount = (data: any): number => data ? Object.keys(data).length : 0;
-
-function StatCard({ title, value, icon: Icon }: { title: string, value: number, icon: React.ElementType }) {
+function StatCard({ title, value, icon: Icon, color }: { title: string, value: number, icon: React.ElementType, color: string }) {
   return (
-    <div className="bg-white p-6 rounded-lg neo-border neo-shadow hover:neo-shadow-lg transition-all duration-300 hover:-translate-y-1 group">
-      <div className="flex justify-between items-start">
+    <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300">
+      <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-bold text-gray-600 mb-1">{title}</p>
-          <p className="text-4xl font-black text-black">{value}</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{title}</p>
+          <p className="text-3xl font-bold text-gray-900">{value}</p>
         </div>
-        <div className="p-3 rounded-lg bg-primary/10 text-primary neo-shadow-sm neo-border group-hover:scale-110 transition-transform">
+        <div className={`p-3 rounded-xl ${color} bg-opacity-10 text-opacity-100`}>
           <Icon className="h-6 w-6" />
         </div>
       </div>
-      <div className="mt-4 h-1 bg-gradient-to-r from-primary via-secondary to-accent rounded-full"></div>
+      <div className="mt-4 flex items-center text-xs text-green-500 font-medium">
+        <Sparkles className="h-3 w-3 mr-1" />
+        <span>Live System Data</span>
+      </div>
     </div>
   )
 }
@@ -33,15 +38,11 @@ function StatCard({ title, value, icon: Icon }: { title: string, value: number, 
 const arrayToString = (arr: string[] | undefined) => arr?.join('\n') || '';
 const stringToArray = (str: string | undefined) => str ? str.split('\n').map(s => s.trim()).filter(Boolean) : [];
 
-// --- Enhanced EditForm Component ---
+// --- EditForm Component ---
 function EditForm({ type, data, companies, onSave, onCancel }: {
-  type: string
-  data: any
-  companies: any
-  onSave: (data: any) => void
-  onCancel: () => void
+  type: string; data: any; companies: any; onSave: (data: any) => void; onCancel: () => void;
 }) {
-  const [formData, setFormData] = useState<any>(data || {})
+  const [formData, setFormData] = useState<any>({})
 
   useEffect(() => {
     const initialData = { ...(data || {}) };
@@ -51,9 +52,10 @@ function EditForm({ type, data, companies, onSave, onCancel }: {
       initialData.benefits = arrayToString(data?.benefits);
     }
     if (type === 'events') {
-        initialData.address = data?.location?.address || '';
-        initialData.latitude = data?.location?.latitude || '';
-        initialData.longitude = data?.location?.longitude || '';
+      initialData.address = data?.location?.address || '';
+      initialData.latitude = data?.location?.latitude || '';
+      initialData.longitude = data?.location?.longitude || '';
+      delete initialData.location;
     }
     setFormData(initialData);
   }, [data, type]);
@@ -61,174 +63,96 @@ function EditForm({ type, data, companies, onSave, onCancel }: {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const finalData = { ...formData };
-    
     if (type === 'internships') {
       finalData.responsibilities = stringToArray(formData.responsibilities);
       finalData.requiredSkills = stringToArray(formData.requiredSkills);
       finalData.benefits = stringToArray(formData.benefits);
     }
     if (type === 'events') {
-        finalData.location = {
-            address: formData.address || '',
-            latitude: parseFloat(formData.latitude) || 0,
-            longitude: parseFloat(formData.longitude) || 0,
-        };
-        delete finalData.address;
-        delete finalData.latitude;
-        delete finalData.longitude;
+      finalData.location = {
+        address: formData.address || '',
+        latitude: parseFloat(formData.latitude) || 0,
+        longitude: parseFloat(formData.longitude) || 0,
+      };
+      delete finalData.address; delete finalData.latitude; delete finalData.longitude;
     }
-
     onSave(finalData);
   }
-  
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev: any) => ({ ...prev, [name]: value }));
-  }
-
-  const handleTicketChange = (index: number, field: string, value: string) => {
-    const newTickets = [...(formData.tickets || [])];
-    newTickets[index] = { ...newTickets[index], [field]: value };
-    setFormData((prev: any) => ({ ...prev, tickets: newTickets }));
-  };
-
-  const addTicket = () => {
-    const newTickets = [...(formData.tickets || []), { id: `${Date.now()}`, name: '', price: '', originalPrice: '' }];
-    setFormData((prev: any) => ({ ...prev, tickets: newTickets }));
-  };
-
-  const removeTicket = (index: number) => {
-    const newTickets = [...(formData.tickets || [])];
-    newTickets.splice(index, 1);
-    setFormData((prev: any) => ({ ...prev, tickets: newTickets }));
-  };
 
   const getFields = () => {
     const fields = {
       events: [
-        { name: 'title', label: 'Title', type: 'text', required: true },
-        { name: 'image', label: 'Image URL', type: 'url', required: true },
-        { name: 'description', label: 'Description', type: 'textarea' },
+        { name: 'title', label: 'Event Name', type: 'text', required: true },
+        { name: 'image', label: 'Cover Image URL', type: 'url', required: true },
+        { name: 'description', label: 'Event Description', type: 'textarea' },
         { name: 'dateTime', label: 'Date & Time', type: 'datetime-local' },
         { name: 'category', label: 'Category', type: 'text' },
         { name: 'venue', label: 'Venue Name', type: 'text' },
-        { name: 'address', label: 'Address', type: 'text' },
-        { name: 'latitude', label: 'Latitude', type: 'number' },
-        { name: 'longitude', label: 'Longitude', type: 'number' },
-        { name: 'organizer', label: 'Organizer', type: 'text' },
-        { name: 'ageRestriction', label: 'Age Restriction', type: 'text' },
+        { name: 'address', label: 'Street Address', type: 'text' },
+        { name: 'latitude', label: 'Lat', type: 'number' },
+        { name: 'longitude', label: 'Long', type: 'number' },
       ],
       companies: [
         { name: 'name', label: 'Company Name', type: 'text', required: true },
         { name: 'logoUrl', label: 'Logo URL', type: 'url', required: true },
-        { name: 'description', label: 'Description', type: 'textarea' },
+        { name: 'description', label: 'About Company', type: 'textarea' },
         { name: 'headquarters', label: 'Headquarters', type: 'text' },
-        { name: 'website', label: 'Website', type: 'url' },
-        { name: 'foundedYear', label: 'Founded Year', type: 'number' },
-        { name: 'employeeCount', label: 'Employee Count', type: 'text' },
+        { name: 'website', label: 'Website URL', type: 'url' },
       ],
       internships: [
-        { name: 'title', label: 'Internship Title', type: 'text', required: true },
-        { name: 'companyId', label: 'Company', type: 'select', options: companies, required: true },
-        { name: 'location', label: 'Location', type: 'text' },
-        { name: 'mode', label: 'Mode', type: 'text' },
-        { name: 'type', label: 'Type', type: 'text' },
-        { name: 'durationMonths', label: 'Duration (Months)', type: 'number' },
-        { name: 'stipend', label: 'Stipend', type: 'text', placeholder: 'e.g., ₹10,000 /month or Unpaid' },
-        { name: 'applyUrl', label: 'Apply URL', type: 'url' },
-        { name: 'responsibilities', label: 'Responsibilities (one per line)', type: 'textarea' },
-        { name: 'requiredSkills', label: 'Required Skills (one per line)', type: 'textarea' },
-        { name: 'benefits', label: 'Benefits (one per line)', type: 'textarea' },
+        { name: 'title', label: 'Role Title', type: 'text', required: true },
+        { name: 'companyId', label: 'Partner Company', type: 'select', options: companies, required: true },
+        { name: 'location', label: 'City', type: 'text' },
+        { name: 'stipend', label: 'Compensation', type: 'text' },
+        { name: 'applyUrl', label: 'Application Link', type: 'url' },
+        { name: 'responsibilities', label: 'Responsibilities', type: 'textarea' },
       ],
-      users: [
-        { name: 'firstName', label: 'First Name', type: 'text' },
-        { name: 'lastName', label: 'Last Name', type: 'text' },
-        { name: 'email', label: 'Email', type: 'email' },
-        { name: 'username', label: 'Username', type: 'text' },
-      ]
     }
     return fields[type as keyof typeof fields] || [];
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {getFields().map((field) => (
-        <div key={field.name}>
-          <label htmlFor={field.name} className="block text-sm font-black text-black mb-2">{field.label}</label>
+        <div key={field.name} className="flex flex-col gap-1.5">
+          <label className="text-xs font-bold text-gray-500 uppercase ml-1">{field.label}</label>
           {field.type === 'textarea' ? (
             <textarea 
-              id={field.name} 
-              name={field.name} 
               value={formData[field.name] || ''} 
-              onChange={handleInputChange} 
-              className="w-full p-3 rounded-lg bg-white neo-border focus:ring-2 focus:ring-black font-medium" 
-              rows={4} 
-              required={field.required} 
+              onChange={(e) => setFormData({...formData, [field.name]: e.target.value})}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all resize-none h-32 text-sm"
+              required={field.required}
             />
           ) : field.type === 'select' ? (
-             <select 
-               id={field.name} 
-               name={field.name} 
-               value={formData[field.name] || ''} 
-               onChange={handleInputChange} 
-               required={field.required} 
-               className="w-full p-3 rounded-lg bg-white neo-border focus:ring-2 focus:ring-black font-medium"
-             >
-               <option value="" disabled>Select a company</option>
-               {field.options && Object.entries(field.options).map(([id, company]: [string, any]) => (
-                 <option key={id} value={id}>{company.name}</option>
-               ))}
-             </select>
+            <select 
+              value={formData[field.name] || ''} 
+              onChange={(e) => setFormData({...formData, [field.name]: e.target.value})}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white outline-none text-sm"
+            >
+              <option value="">Select Option</option>
+              {field.options && Object.entries(field.options).map(([id, c]: any) => <option key={id} value={id}>{c.name}</option>)}
+            </select>
           ) : (
             <input 
-              id={field.name} 
-              name={field.name} 
-              type={field.type} 
-              value={formData[field.name] || ''} 
-              onChange={handleInputChange} 
-              className="w-full p-3 rounded-lg bg-white neo-border focus:ring-2 focus:ring-black font-medium" 
-              required={field.required} 
-              placeholder={field.placeholder || ''} 
-              step={field.type === 'number' ? 'any' : undefined}
+              type={field.type}
+              value={formData[field.name] || ''}
+              onChange={(e) => setFormData({...formData, [field.name]: e.target.value})}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm"
+              required={field.required}
             />
           )}
         </div>
       ))}
-      
-      {type === 'events' && (
-        <div>
-            <h4 className="text-md font-black text-black mb-3">Tickets</h4>
-            <div className="space-y-4">
-                {(formData.tickets || []).map((ticket: any, index: number) => (
-                    <div key={index} className="p-4 neo-border border-dashed border-gray-400 rounded-lg space-y-3 relative bg-gray-50">
-                        <button type="button" onClick={() => removeTicket(index)} className="absolute top-3 right-3 p-1 text-gray-500 hover:text-red-600 neo-shadow-sm rounded-md"><X size={14} /></button>
-                        <input name="name" type="text" value={ticket.name} onChange={(e) => handleTicketChange(index, 'name', e.target.value)} placeholder="Ticket Name (e.g., VIP)" className="w-full p-2 rounded-lg bg-white neo-border font-medium" />
-                        <div className="grid grid-cols-2 gap-3">
-                           <input name="price" type="text" value={ticket.price} onChange={(e) => handleTicketChange(index, 'price', e.target.value)} placeholder="Price (e.g., ₹499)" className="w-full p-2 rounded-lg bg-white neo-border font-medium" />
-                           <input name="originalPrice" type="text" value={ticket.originalPrice} onChange={(e) => handleTicketChange(index, 'originalPrice', e.target.value)} placeholder="Original Price" className="w-full p-2 rounded-lg bg-white neo-border font-medium" />
-                        </div>
-                    </div>
-                ))}
-                <button type="button" onClick={addTicket} className="w-full flex items-center justify-center gap-2 neo-border border-dashed border-gray-400 text-gray-600 hover:border-black hover:text-black p-3 rounded-lg transition-colors font-bold">
-                  <Plus size={18} /> Add Ticket Type
-                </button>
-            </div>
-        </div>
-      )}
-
-      <div className="flex gap-3 pt-6">
-        <button type="submit" className="flex-1 flex items-center justify-center gap-3 bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-3 rounded-lg font-black neo-border neo-button text-lg">
-          <Save size={18} /> {data?.id ? 'UPDATE' : 'CREATE'}
-        </button>
-        <button type="button" onClick={onCancel} className="bg-white hover:bg-gray-100 px-6 py-3 rounded-lg neo-border font-bold">
-          <X size={18} />
+      <div className="flex gap-3 pt-4">
+        <button type="submit" className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2">
+          <Save size={18} /> SAVE CHANGES
         </button>
       </div>
     </form>
   )
 }
 
-// --- Main Admin Dashboard Component ---
+// --- Main Admin Dashboard ---
 export default function AdminDashboard() {
   const [authenticated, setAuthenticated] = useState(false)
   const [pin, setPin] = useState("")
@@ -241,130 +165,32 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (document.cookie.includes('admin-auth=true')) setAuthenticated(true)
-    const refs = {
-        events: ref(database, 'events'),
-        companies: ref(database, 'companies'),
-        internships: ref(database, 'internships'),
-    }
-    const unsubscribes = Object.entries(refs).map(([key, dbRef]) => 
-        onValue(dbRef, (snapshot) => {
-            setData((prev: any) => ({ ...prev, [key]: snapshot.val() || {} }))
-        })
+    const unsubscribes = ['events', 'companies', 'internships'].map(key => 
+      onValue(ref(database, key), (s) => setData((p: any) => ({ ...p, [key]: s.val() || {} })))
     );
-
-    // Fetch Clerk users
-    fetchClerkUsers();
-
-    return () => unsubscribes.forEach(unsub => unsub());
+    fetch('/api/clerk-users').then(r => r.ok && r.json().then(setClerkUsers));
+    return () => unsubscribes.forEach(u => u());
   }, [])
-
-  const fetchClerkUsers = async () => {
-    try {
-      const response = await fetch('/api/clerk-users');
-      if (response.ok) {
-        const users = await response.json();
-        setClerkUsers(users);
-      }
-    } catch (error) {
-      console.error('Error fetching Clerk users:', error);
-    }
-  }
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (pin === PIN) {
-      setAuthenticated(true)
-      document.cookie = "admin-auth=true; path=/; max-age=86400"
-    } else {
-      alert("❌ Invalid PIN");
-      setPin("");
-    }
-  }
-
-  const handleLogout = () => {
-    document.cookie = "admin-auth=; path=/; max-age=0"
-    setAuthenticated(false)
-    router.push('/')
-  }
-
-  const handleDelete = async (path: string, id: string) => {
-    if (confirm("⚠️ Are you sure? This action cannot be undone.")) {
-      await remove(ref(database, `${path}/${id}`))
-      if(editingItem?.id === id) setEditingItem(null)
-    }
-  }
-
-  const handleSave = async (path: string, itemData: any) => {
-    const dataToSave = { ...itemData };
-    delete dataToSave.id;
-    if (editingItem?.id) {
-      await set(ref(database, `${path}/${editingItem.id}`), dataToSave);
-    } else {
-      await push(ref(database, path), dataToSave);
-    }
-    setEditingItem(null);
-  }
-
-  const handleTabClick = (tab: string) => {
-    setActiveTab(tab);
-    setEditingItem(null);
-    setSearchQuery("");
-  }
-
-  // Get data based on active tab
-  const getActiveData = () => {
-    if (activeTab === 'users') {
-      return clerkUsers.map((user: any) => ({
-        id: user.id,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        email: user.email_addresses?.[0]?.email_address,
-        username: user.username,
-        fullName: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
-        createdAt: new Date(user.created_at).toLocaleDateString()
-      }));
-    }
-    return data[activeTab] || {};
-  }
-
-  const filteredData = Object.entries(getActiveData()).filter(([, item]: [string, any]) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    const title = (item.title || item.name || item.fullName || item.email || '').toLowerCase();
-    const description = (item.description || item.email || item.location || item.category || item.username || '').toLowerCase();
-    return title.includes(query) || description.includes(query);
-  })
 
   if (!authenticated) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
-        {/* Background Elements */}
-        <div className="absolute top-20 left-20 w-16 h-16 bg-primary neo-shadow-sm rounded-lg opacity-20 float-animation"></div>
-        <div className="absolute bottom-20 right-20 w-12 h-12 bg-secondary neo-shadow-sm rounded-full opacity-30 float-animation" style={{animationDelay: '2s'}}></div>
-        <div className="absolute top-1/2 right-1/3 w-10 h-10 bg-accent neo-shadow-sm opacity-25 float-animation" style={{animationDelay: '4s'}}></div>
-        
-        <div className="bg-card rounded-lg p-8 neo-border neo-shadow-lg max-w-sm w-full relative z-10">
-          <div className="text-center mb-6">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <Shield className="h-8 w-8 text-primary" />
-              <h1 className="text-3xl font-black text-foreground">SECURE ACCESS</h1>
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6">
+        <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-gray-100 p-10">
+          <div className="text-center mb-10">
+            <div className="inline-flex p-4 rounded-2xl bg-indigo-50 text-indigo-600 mb-4">
+              <Shield size={32} />
             </div>
-            <p className="text-muted-foreground font-medium">Enter your 4-digit PIN to continue</p>
+            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Admin Gateway</h1>
+            <p className="text-gray-500 mt-2">Authorization required to access Exosphere</p>
           </div>
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div className="relative">
-              <input 
-                type="password" 
-                value={pin} 
-                onChange={(e) => setPin(e.target.value)} 
-                placeholder="••••" 
-                maxLength={4} 
-                className="w-full p-4 rounded-lg bg-white neo-border text-center text-3xl tracking-[.5em] font-black focus:ring-2 focus:ring-primary" 
-                autoFocus 
-              />
-            </div>
-            <button type="submit" className="w-full bg-primary text-primary-foreground py-4 rounded-lg font-black neo-border neo-button text-lg hover:bg-primary/90 transition-colors">
-              LAUNCH DASHBOARD <Rocket className="ml-2 inline h-5 w-5" />
+          <form onSubmit={(e) => { e.preventDefault(); if(pin === PIN) { setAuthenticated(true); document.cookie = "admin-auth=true; path=/; max-age=86400" } }}>
+            <input 
+              type="password" value={pin} onChange={(e) => setPin(e.target.value)}
+              className="w-full text-center text-3xl tracking-[0.5em] py-4 bg-gray-50 rounded-2xl border border-gray-200 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-mono mb-6"
+              placeholder="••••" maxLength={4}
+            />
+            <button className="w-full bg-gray-900 hover:bg-black text-white font-bold py-4 rounded-2xl transition-all shadow-lg">
+              AUTHENTICATE
             </button>
           </form>
         </div>
@@ -372,199 +198,138 @@ export default function AdminDashboard() {
     )
   }
 
+  const getFilteredData = () => {
+    const raw = activeTab === 'users' ? clerkUsers.map(u => ({ id: u.id, name: `${u.first_name} ${u.last_name}`, email: u.email_addresses[0].email_address })) : data[activeTab];
+    return Object.entries(raw).filter(([_, item]: any) => 
+      (item.title || item.name || "").toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 text-foreground">
-      {/* Header */}
-      <header className="border-b-4 bg-card sticky top-0 z-20">
-        <div className="container mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-primary p-2 text-primary-foreground neo-shadow neo-border">
-              <Database className="h-6 w-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-black">EXOSPHERE ADMIN</h1>
-            </div>
+    <div className="min-h-screen bg-[#F8FAFC] flex">
+      {/* Sidebar Navigation */}
+      <aside className="w-64 bg-white border-r border-gray-100 hidden lg:flex flex-col sticky top-0 h-screen">
+        <div className="p-8 flex items-center gap-3">
+          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-indigo-200 shadow-lg">
+            <Database size={20} />
           </div>
-          <button onClick={handleLogout} className="flex items-center gap-2 bg-card hover:bg-gray-100 px-4 py-2 rounded-lg font-bold neo-border neo-button">
-            <LogOut size={18} /> LOGOUT
+          <span className="font-black text-xl tracking-tighter">EXOSPHERE</span>
+        </div>
+
+        <nav className="flex-1 px-4 space-y-2">
+          {[
+            { id: "events", label: "Events", icon: Calendar, color: "text-blue-500" },
+            { id: "companies", label: "Partners", icon: Building2, color: "text-purple-500" },
+            { id: "internships", label: "Career", icon: Briefcase, color: "text-orange-500" },
+            { id: "users", label: "Members", icon: Users, color: "text-green-500" },
+          ].map(tab => (
+            <button 
+              key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === tab.id ? 'bg-indigo-50 text-indigo-600 shadow-sm' : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'}`}
+            >
+              <tab.icon size={18} /> {tab.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-6">
+          <button onClick={() => { document.cookie = "admin-auth=; max-age=0"; window.location.reload() }} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-50 text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all font-bold text-sm border border-gray-100">
+            <LogOut size={16} /> SIGN OUT
           </button>
         </div>
-      </header>
+      </aside>
 
-      <main className="container mx-auto px-4 sm:px-6 py-8">
-        {/* Stats Section */}
-        <section className="mb-12">
-          <div className="flex items-center gap-3 mb-6">
-            <BarChart3 className="h-8 w-8 text-primary" />
-            <h2 className="text-3xl font-black">DASHBOARD OVERVIEW</h2>
+      {/* Main Content */}
+      <main className="flex-1 p-8 lg:p-12 overflow-y-auto">
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+          <div>
+            <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3 uppercase">
+              {activeTab} Management
+            </h2>
+            <p className="text-gray-500 font-medium">Create, monitor, and manage your platform resources.</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard title="Total Events" value={formatCount(data.events)} icon={Calendar} />
-            <StatCard title="Total Companies" value={formatCount(data.companies)} icon={Building2} />
-            <StatCard title="Total Internships" value={formatCount(data.internships)} icon={Briefcase} />
-            <StatCard title="Total Users" value={clerkUsers.length} icon={Users} />
-          </div>
-        </section>
-
-        {/* Tabs Section */}
-        <div className="bg-card rounded-lg p-2 neo-border mb-8">
-          <div className="flex flex-wrap gap-2">
-            {[
-              { id: "events", label: "Events", icon: Calendar }, 
-              { id: "companies", label: "Companies", icon: Building2 }, 
-              { id: "internships", label: "Internships", icon: Briefcase }, 
-              { id: "users", label: "Users", icon: Users }
-            ].map((tab) => (
-              <button 
-                key={tab.id} 
-                onClick={() => handleTabClick(tab.id)}
-                className={`flex items-center gap-3 px-6 py-3 rounded-md font-black transition-all ${
-                  activeTab === tab.id 
-                    ? 'bg-primary text-primary-foreground neo-shadow-sm' 
-                    : 'text-muted-foreground hover:text-foreground hover:bg-gray-100'
-                }`}
-              >
-                <tab.icon size={18} />
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Search and Add */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-card p-6 rounded-lg neo-border">
-              <div className="relative w-full sm:w-80">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <input 
-                  type="search" 
-                  placeholder={`SEARCH ${activeTab.toUpperCase()}...`} 
-                  value={searchQuery} 
-                  onChange={(e) => setSearchQuery(e.target.value)} 
-                  className="w-full pl-12 p-3 rounded-lg bg-white neo-border focus:ring-2 focus:ring-primary font-medium" 
-                />
-              </div>
-              {activeTab !== 'users' && (
-                <button 
-                  onClick={() => setEditingItem({})} 
-                  className="w-full sm:w-auto flex items-center justify-center gap-3 bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-3 rounded-lg font-black neo-border neo-button"
-                >
-                  <Plus size={20} /> CREATE NEW
-                </button>
-              )}
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <input 
+                type="text" placeholder="Quick search..." 
+                className="pl-12 pr-4 py-3 bg-white border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 w-64 shadow-sm"
+                value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+              />
             </div>
-
-            {/* Data Grid */}
-            {filteredData.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {filteredData.map(([id, item]: [string, any]) => (
-                  <div key={id} className="bg-card rounded-lg neo-border overflow-hidden group transition-all hover:neo-shadow-lg hover:-translate-y-1">
-                    {(activeTab === 'events' || activeTab === 'companies') && (
-                        <div className="aspect-video bg-gray-100 border-b-4 border-foreground relative">
-                            <img 
-                              src={item.image || item.logoUrl || PLACEHOLDER_IMAGE} 
-                              alt={item.title || item.name} 
-                              className="w-full h-full object-cover"
-                            />
-                        </div>
-                    )}
-                    <div className="p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <h3 className="font-black text-xl pr-4 line-clamp-2">
-                          {item.title || item.name || item.fullName || item.email}
-                        </h3>
-                        {activeTab !== 'users' && (
-                          <div className="flex gap-2 flex-shrink-0">
-                            <button 
-                              onClick={() => setEditingItem({ ...item, id })} 
-                              className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md neo-shadow-sm transition-colors"
-                            >
-                              <Edit size={16} />
-                            </button>
-                            <button 
-                              onClick={() => handleDelete(activeTab, id)} 
-                              className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md neo-shadow-sm transition-colors"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {activeTab === 'events' && item.category && (
-                        <p className="text-xs font-black text-primary uppercase tracking-wider mb-3">{item.category}</p>
-                      )}
-                      
-                      {activeTab === 'companies' && item.headquarters && (
-                        <p className="text-sm text-muted-foreground mb-3 flex items-center gap-2 font-bold">
-                          <MapPin size={16}/> {item.headquarters}
-                        </p>
-                      )}
-                      
-                      {activeTab === 'internships' && data.companies[item.companyId] && (
-                        <p className="text-sm font-black text-secondary mb-3 flex items-center gap-2">
-                          <Building2 size={16} /> {data.companies[item.companyId]?.name}
-                        </p>
-                      )}
-
-                      {activeTab === 'users' && (
-                        <>
-                          <p className="text-sm text-muted-foreground mb-2 font-medium">
-                            Username: {item.username || 'N/A'}
-                          </p>
-                          <p className="text-sm text-muted-foreground mb-3 font-medium">
-                            Joined: {item.createdAt}
-                          </p>
-                        </>
-                      )}
-                      
-                      <p className="text-sm text-muted-foreground line-clamp-2 font-medium">
-                        {item.description || item.email || item.location || 'No additional details provided.'}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-                <div className="text-center py-16 neo-border border-dashed rounded-lg bg-card">
-                    <Sparkles className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
-                    <h3 className="text-xl font-black mb-2">NO {activeTab.toUpperCase()} FOUND</h3>
-                    <p className="text-muted-foreground font-medium max-w-md mx-auto">
-                      {searchQuery 
-                        ? `Your search for "${searchQuery}" did not return any results.` 
-                        : `Ready to create your first ${activeTab.slice(0, -1)}? Click "CREATE NEW" to get started!`
-                      }
-                    </p>
-                </div>
+            {activeTab !== 'users' && (
+              <button onClick={() => setEditingItem({})} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-3 rounded-2xl shadow-lg shadow-indigo-100 flex items-center gap-2 transition-all">
+                <Plus size={20} /> CREATE
+              </button>
             )}
           </div>
+        </header>
 
-          {/* Edit Form Sidebar */}
-          {editingItem && (
-            <div className="lg:col-span-1 sticky top-24">
-              <div className="bg-card rounded-lg p-6 neo-border neo-shadow-lg max-h-[calc(100vh-8rem)] overflow-y-auto">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-xl font-black">
-                    {editingItem.id ? 'EDIT' : 'CREATE'} {activeTab.slice(0, -1).toUpperCase()}
-                  </h3>
-                  <button 
-                    onClick={() => setEditingItem(null)} 
-                    className="p-2 text-muted-foreground hover:bg-gray-100 rounded-md neo-shadow-sm"
-                  >
-                    <X size={18} />
-                  </button>
+        {/* Dynamic Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          <StatCard title="Total Events" value={Object.keys(data.events).length} icon={Calendar} color="bg-blue-500" />
+          <StatCard title="Partners" value={Object.keys(data.companies).length} icon={Building2} color="bg-purple-500" />
+          <StatCard title="Internships" value={Object.keys(data.internships).length} icon={Briefcase} color="bg-orange-500" />
+          <StatCard title="Active Users" value={clerkUsers.length} icon={Users} color="bg-green-500" />
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-10 items-start">
+          <div className="xl:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {getFilteredData().map(([id, item]: any) => (
+                <div key={id} className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                  <div className="h-48 overflow-hidden relative">
+                    <img src={item.image || item.logoUrl || PLACEHOLDER_IMAGE} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <div className="absolute top-4 left-4">
+                      <span className="px-3 py-1 bg-white/90 backdrop-blur shadow-sm rounded-full text-[10px] font-black uppercase tracking-widest text-indigo-600">
+                        {item.category || "Active"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-6">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-bold text-lg text-gray-900 line-clamp-1">{item.title || item.name}</h3>
+                      <div className="flex gap-1">
+                        <button onClick={() => setEditingItem({...item, id})} className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"><Edit3 size={16} /></button>
+                        <button onClick={() => confirm("Delete this?") && remove(ref(database, `${activeTab}/${id}`))} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={16} /></button>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-500 line-clamp-2 mb-4 font-medium leading-relaxed">
+                      {item.description || item.email || "No details provided for this entry."}
+                    </p>
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-50">
+                      <div className="flex items-center text-gray-400 text-xs font-bold uppercase gap-1">
+                         <MapPin size={14} /> {item.location?.address || item.headquarters || "Remote"}
+                      </div>
+                      <ChevronRight size={16} className="text-gray-300" />
+                    </div>
+                  </div>
                 </div>
-                <EditForm 
-                  type={activeTab} 
-                  data={editingItem} 
-                  companies={data.companies} 
-                  onSave={(formData) => handleSave(activeTab, formData)} 
-                  onCancel={() => setEditingItem(null)} 
-                />
+              ))}
+            </div>
+          </div>
+
+          {/* Form Panel */}
+          {editingItem ? (
+            <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-xl sticky top-8">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-xl font-extrabold text-gray-900 tracking-tight">Editor</h3>
+                <button onClick={() => setEditingItem(null)} className="p-2 hover:bg-gray-100 rounded-full text-gray-400 transition-colors"><X size={20} /></button>
               </div>
+              <EditForm 
+                type={activeTab} data={editingItem} companies={data.companies} 
+                onSave={async (fd) => {
+                  const r = editingItem.id ? ref(database, `${activeTab}/${editingItem.id}`) : push(ref(database, activeTab));
+                  await set(r, fd); setEditingItem(null);
+                }} 
+                onCancel={() => setEditingItem(null)} 
+              />
+            </div>
+          ) : (
+            <div className="bg-indigo-600 rounded-3xl p-8 text-white shadow-2xl shadow-indigo-200 hidden xl:block">
+              <Sparkles className="mb-4 opacity-50" size={32} />
+              <h3 className="text-2xl font-black mb-2 leading-tight">Selection Required</h3>
+              <p className="opacity-80 text-sm font-medium leading-relaxed">Select an item from the list to edit its properties, or click the Create button to launch a new instance.</p>
             </div>
           )}
         </div>
