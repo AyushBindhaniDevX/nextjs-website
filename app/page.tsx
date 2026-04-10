@@ -3,9 +3,10 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+// Added 'Database' to the import list to fix the build error
 import { 
   ArrowRight, BarChart3, Briefcase, Building2, Calendar, 
-  Users, Zap, Sparkles, Rocket, Shield, CheckCircle2, Globe 
+  Users, Zap, Sparkles, Rocket, Shield, Database 
 } from "lucide-react"
 
 export default function HomePage() {
