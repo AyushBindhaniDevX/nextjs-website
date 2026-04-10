@@ -1,13 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { database } from "@/lib/firebase"
-import { ref, onValue, remove, set, push, update } from "firebase/database"
+import { ref, onValue, set, push, update, remove } from "firebase/database"
 import { 
   LogOut, Plus, Edit3, Trash2, Calendar, Briefcase, Building2, Users, 
-  Save, X, Search, BarChart3, MapPin, Rocket, Shield, Database, 
-  Sparkles, ChevronRight, CheckCircle2, QrCode, FileText, Clock, AlertCircle
+  Save, X, Search, Shield, Database, Sparkles, ChevronRight, 
+  CheckCircle2, QrCode, FileText, AlertCircle, Phone, Mail, Ticket
 } from "lucide-react"
 
 const PIN = "5152"
@@ -15,131 +14,69 @@ const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1614850523296-d8c1a
 
 // --- UI Components ---
 
-function StatCard({ title, value, icon: Icon, color, trend }: any) {
-  return (
-    <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
-      <div className={`absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 rounded-full opacity-5 group-hover:scale-150 transition-transform duration-700 ${color}`} />
-      <div className="flex items-center justify-between relative z-10">
-        <div>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{title}</p>
-          <p className="text-3xl font-black text-gray-900">{value}</p>
-          {trend && <p className="text-[10px] text-green-500 font-bold mt-2 flex items-center gap-1"><Sparkles size={10}/> {trend}</p>}
-        </div>
-        <div className={`p-4 rounded-2xl ${color} bg-opacity-10 text-opacity-100 shadow-inner`}>
-          <Icon className="h-6 w-6" />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// --- OD Management List ---
-function ODRequestItem({ request, onAction }: any) {
-  return (
-    <div className="bg-white border border-gray-100 rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:shadow-md transition-all">
-      <div className="flex gap-4 items-center">
-        <div className="w-12 h-12 bg-orange-50 rounded-full flex items-center justify-center text-orange-600">
-          <FileText size={20} />
-        </div>
-        <div>
-          <h4 className="font-bold text-gray-900">{request.userName || "Unknown Student"}</h4>
-          <p className="text-xs text-gray-500 flex items-center gap-1"><Calendar size={12}/> {request.eventTitle} • {request.submittedAt}</p>
-        </div>
-      </div>
-      
-      <div className="flex items-center gap-3">
-        {request.proofUrl === "Verified by Gatekeeper Scan" ? (
-          <span className="text-[10px] font-black text-green-600 bg-green-50 px-3 py-2 rounded-lg border border-green-100">AUTO-VERIFIED</span>
-        ) : (
-          <a href={request.proofUrl} target="_blank" className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-2 rounded-lg hover:bg-indigo-100 transition-colors">VIEW PROOF</a>
-        )}
-        <button onClick={() => onAction(request.id, 'Approved')} className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-all"><CheckCircle2 size={18}/></button>
-        <button onClick={() => onAction(request.id, 'Rejected')} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-all"><X size={18}/></button>
-      </div>
-    </div>
-  )
-}
-
-const arrayToString = (arr: any) => Array.isArray(arr) ? arr.join('\n') : '';
-const stringToArray = (str: string) => str ? str.split('\n').map(s => s.trim()).filter(Boolean) : [];
-
-// --- EditForm ---
-function EditForm({ type, data, companies, onSave, onCancel }: any) {
-  const [formData, setFormData] = useState<any>({})
-
-  useEffect(() => {
-    const initialData = { ...(data || {}) };
-    if (type === 'internships') {
-      initialData.responsibilities = arrayToString(data?.responsibilities);
-      initialData.requiredSkills = arrayToString(data?.requiredSkills);
-    }
-    if (type === 'events') {
-      initialData.address = data?.location?.address || '';
-      delete initialData.location;
-    }
-    setFormData(initialData);
-  }, [data, type]);
-
-  const getFields = () => {
-    const fields = {
-      events: [
-        { name: 'title', label: 'Event Name', type: 'text', required: true },
-        { name: 'image', label: 'Image URL', type: 'url', required: true },
-        { name: 'description', label: 'Description', type: 'textarea' },
-        { name: 'dateTime', label: 'Date/Time', type: 'datetime-local' },
-        { name: 'venue', label: 'Venue', type: 'text' },
-        { name: 'address', label: 'Map Address', type: 'text' },
-      ],
-      companies: [
-        { name: 'name', label: 'Company Name', type: 'text', required: true },
-        { name: 'logoUrl', label: 'Logo URL', type: 'url' },
-        { name: 'description', label: 'About', type: 'textarea' },
-        { name: 'headquarters', label: 'Headquarters', type: 'text' },
-      ],
-      internships: [
-        { name: 'title', label: 'Role', type: 'text', required: true },
-        { name: 'companyId', label: 'Partner', type: 'select', options: companies },
-        { name: 'location', label: 'City', type: 'text' },
-        { name: 'responsibilities', label: 'Responsibilities (New Line per item)', type: 'textarea' },
-        { name: 'requiredSkills', label: 'Skills (New Line per item)', type: 'textarea' },
-      ]
-    }
-    return fields[type as keyof typeof fields] || [];
+function Badge({ children, color }: { children: React.ReactNode, color: string }) {
+  const colors: Record<string, string> = {
+    green: "bg-green-50 text-green-600 border-green-100",
+    red: "bg-red-50 text-red-600 border-red-100",
+    orange: "bg-orange-50 text-orange-600 border-orange-100",
+    blue: "bg-blue-50 text-blue-600 border-blue-100",
   }
+  return (
+    <span className={`text-[10px] font-black px-3 py-1 rounded-full border ${colors[color] || colors.blue}`}>
+      {children}
+    </span>
+  )
+}
+
+// --- OD Management Item ---
+function ODRequestItem({ request, student, onAction }: any) {
+  const statusColor = request.status === 'Approved' ? 'green' : request.status === 'Rejected' ? 'red' : 'orange';
 
   return (
-    <form onSubmit={(e) => {
-      e.preventDefault();
-      const final = { ...formData };
-      if (type === 'internships') {
-        final.responsibilities = stringToArray(formData.responsibilities);
-        final.requiredSkills = stringToArray(formData.requiredSkills);
-      }
-      if (type === 'events') {
-        final.location = { address: formData.address || '', latitude: 0, longitude: 0 };
-        delete final.address;
-      }
-      onSave(final);
-    }} className="space-y-4">
-      {getFields().map((f: any) => (
-        <div key={f.name}>
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{f.label}</label>
-          {f.type === 'textarea' ? (
-            <textarea value={formData[f.name] || ''} onChange={e => setFormData({...formData, [f.name]: e.target.value})} className="w-full px-4 py-3 rounded-2xl border border-gray-100 bg-gray-50 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all text-sm h-28" />
-          ) : f.type === 'select' ? (
-            <select value={formData[f.name] || ''} onChange={e => setFormData({...formData, [f.name]: e.target.value})} className="w-full px-4 py-3 rounded-2xl border border-gray-100 bg-gray-50 outline-none text-sm">
-              <option value="">Select Company</option>
-              {Object.entries(f.options || {}).map(([id, c]: any) => <option key={id} value={id}>{c.name}</option>)}
-            </select>
-          ) : (
-            <input type={f.type} value={formData[f.name] || ''} onChange={e => setFormData({...formData, [f.name]: e.target.value})} className="w-full px-4 py-3 rounded-2xl border border-gray-100 bg-gray-50 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all text-sm" required={f.required} />
-          )}
+    <div className="bg-white border border-gray-100 rounded-[2rem] p-6 shadow-sm hover:shadow-md transition-all">
+      <div className="flex flex-col lg:flex-row justify-between gap-6">
+        <div className="flex gap-5">
+          <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center text-indigo-600 border border-gray-100">
+            <Users size={28} />
+          </div>
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <h4 className="font-black text-xl text-gray-900">{request.userName || "Unknown Student"}</h4>
+              <Badge color={statusColor}>{request.status.toUpperCase()}</Badge>
+            </div>
+            <p className="text-indigo-600 font-bold text-sm mb-3 flex items-center gap-2">
+              <Calendar size={14}/> {request.eventTitle}
+            </p>
+            <div className="flex flex-wrap gap-4 text-xs text-gray-400 font-medium">
+              <span className="flex items-center gap-1"><Mail size={12}/> {student?.email || 'No Email'}</span>
+              <span className="flex items-center gap-1"><Phone size={12}/> {student?.phone || 'No Phone'}</span>
+            </div>
+          </div>
         </div>
-      ))}
-      <button className="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl shadow-xl hover:bg-black transition-all flex items-center justify-center gap-2">
-        <Save size={18} /> UPDATE DATABASE
-      </button>
-    </form>
+
+        <div className="flex flex-row lg:flex-col items-center lg:items-end gap-4 border-t lg:border-t-0 pt-4 lg:pt-0 border-gray-50">
+          <div className="text-right">
+             {request.proofUrl === "Verified by Gatekeeper Scan" ? (
+               <div className="flex items-center gap-2 text-green-600 font-bold text-xs bg-green-50 px-3 py-2 rounded-xl">
+                 <Shield size={14}/> SYSTEM VERIFIED
+               </div>
+             ) : (
+               <a href={request.proofUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-indigo-600 font-bold text-xs bg-indigo-50 px-4 py-2 rounded-xl hover:bg-indigo-600 hover:text-white transition-all">
+                 VIEW PROOF <ChevronRight size={14}/>
+               </a>
+             )}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => onAction(request.id, 'Approved')} className="px-6 py-3 bg-gray-900 text-white rounded-xl font-bold text-xs hover:bg-green-600 transition-all flex items-center gap-2">
+              <CheckCircle2 size={16}/> APPROVE
+            </button>
+            <button onClick={() => onAction(request.id, 'Rejected')} className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all">
+              <X size={20}/>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -155,7 +92,6 @@ export default function AdminDashboard() {
   const [scanResult, setScanResult] = useState<any>(null)
 
   useEffect(() => {
-    if (document.cookie.includes('admin-auth=true')) setAuthenticated(true)
     const nodes = ['events', 'companies', 'internships', 'users', 'od_requests'];
     const unsubs = nodes.map(node => 
       onValue(ref(database, node), (s) => setData((p: any) => ({ ...p, [node]: s.val() || {} })))
@@ -167,51 +103,66 @@ export default function AdminDashboard() {
     await update(ref(database, `od_requests/${requestId}`), { status });
   }
 
-  // --- UPDATED CHECK-IN LOGIC WITH AUTO-OD ---
+  // Manually Assign a Ticket to a Student
+  const addManualTicket = async (userId: string) => {
+    const eventId = prompt("Enter Event ID:");
+    if (!eventId || !data.events[eventId]) return alert("Invalid Event ID");
+
+    const bookingId = "BK" + Math.floor(100000 + Math.random() * 900000);
+    const event = data.events[eventId];
+
+    await set(ref(database, `users/${userId}/tickets/${bookingId}`), {
+      bookingId,
+      eventId,
+      eventTitle: event.title,
+      eventDateTime: event.dateTime,
+      status: "active",
+      purchaseDate: new Date().toISOString(),
+      venue: event.venue || "TBD",
+      totalPaid: 0,
+      paymentId: "MANUAL_ENTRY"
+    });
+    alert(`Ticket ${bookingId} added to student record.`);
+  }
+
   const handleQuickCheckIn = async (bookingId: string) => {
     setScanResult({ loading: true });
     let found = false;
 
-    Object.entries(data.users).forEach(([uid, user]: any) => {
+    for (const [uid, user] of Object.entries(data.users) as any) {
       if (user.tickets && user.tickets[bookingId]) {
         const ticket = user.tickets[bookingId];
+        await update(ref(database, `users/${uid}/tickets/${bookingId}`), { status: 'checked_in' });
         
-        // 1. Update Ticket Status
-        update(ref(database, `users/${uid}/tickets/${bookingId}`), { status: 'checked_in' });
-        
-        // 2. Automated OD Request Generation
         const odRequestRef = push(ref(database, 'od_requests'));
-        set(odRequestRef, {
+        await set(odRequestRef, {
           userId: uid,
-          userName: user.name || user.username || "SRM Student",
+          userName: user.name || "SRM Student",
           eventId: ticket.eventId,
           eventTitle: ticket.eventTitle,
           submittedAt: new Date().toLocaleString(),
           status: 'Pending',
-          proofUrl: "Verified by Gatekeeper Scan", // Special status for automated verification
-          reason: "Event Attendance (Verified via Exosphere Scan)"
+          proofUrl: "Verified by Gatekeeper Scan",
+          reason: "Entry scanned at gate."
         });
 
-        setScanResult({ success: true, name: user.name || user.username, event: ticket.eventTitle });
+        setScanResult({ success: true, name: user.name, event: ticket.eventTitle });
         found = true;
+        break;
       }
-    });
-
-    if (!found) setScanResult({ error: "Invalid Booking ID" });
+    }
+    if (!found) setScanResult({ error: "Invalid ID" });
   }
 
   if (!authenticated) {
     return (
-      <div className="min-h-screen bg-[#FDFDFF] flex items-center justify-center p-6 font-sans">
+      <div className="min-h-screen bg-[#FDFDFF] flex items-center justify-center p-6">
         <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl border border-gray-100 p-12 text-center">
-          <div className="inline-flex p-5 rounded-3xl bg-indigo-50 text-indigo-600 mb-6 animate-bounce">
-            <Shield size={40} />
-          </div>
-          <h1 className="text-3xl font-black text-gray-900 tracking-tighter mb-2">Command Center</h1>
-          <p className="text-gray-400 text-sm font-medium mb-10 uppercase tracking-widest">Enter Admin Signature</p>
-          <form onSubmit={(e) => { e.preventDefault(); if(pin === PIN) { setAuthenticated(true); document.cookie = "admin-auth=true; path=/; max-age=86400" } }}>
-            <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} className="w-full text-center text-4xl tracking-[0.6em] py-5 bg-gray-50 rounded-3xl border-2 border-transparent focus:border-indigo-500 outline-none transition-all font-mono mb-8" placeholder="••••" maxLength={4} />
-            <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-5 rounded-3xl transition-all shadow-lg shadow-indigo-200">ACCESS SYSTEM</button>
+          <Shield className="mx-auto text-indigo-600 mb-6" size={48} />
+          <h1 className="text-3xl font-black text-gray-900 mb-2">Command Center</h1>
+          <form onSubmit={(e) => { e.preventDefault(); if(pin === PIN) setAuthenticated(true) }}>
+            <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} className="w-full text-center text-4xl py-5 bg-gray-50 rounded-3xl mb-8 outline-none" placeholder="PIN" maxLength={4} />
+            <button className="w-full bg-indigo-600 text-white font-black py-5 rounded-3xl">ACCESS</button>
           </form>
         </div>
       </div>
@@ -221,179 +172,107 @@ export default function AdminDashboard() {
   const getFilteredData = () => {
     const raw = data[activeTab] || {};
     return Object.entries(raw).filter(([_, item]: any) => 
-      (item.title || item.name || item.userName || "").toLowerCase().includes(searchQuery.toLowerCase())
+      (item.title || item.name || item.userName || item.email || "").toLowerCase().includes(searchQuery.toLowerCase())
     ).reverse();
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex text-gray-900 selection:bg-indigo-100">
-      {/* Sidebar */}
-      <aside className="w-72 bg-white border-r border-gray-100 hidden xl:flex flex-col sticky top-0 h-screen shadow-sm">
-        <div className="p-10 flex items-center gap-4">
-          <div className="w-12 h-12 bg-gradient-to-tr from-indigo-600 to-violet-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
-            <Database size={24} />
-          </div>
-          <span className="font-black text-2xl tracking-tighter">EXO<span className="text-indigo-600">SPHERE</span></span>
+    <div className="min-h-screen bg-[#F8FAFC] flex">
+      {/* Sidebar Navigation */}
+      <aside className="w-72 bg-white border-r border-gray-100 hidden xl:flex flex-col sticky top-0 h-screen p-8">
+        <div className="flex items-center gap-3 mb-12">
+          <Database className="text-indigo-600" />
+          <span className="font-black text-xl tracking-tighter">EXOSPHERE</span>
         </div>
-
-        <nav className="flex-1 px-6 space-y-2">
+        <nav className="flex-1 space-y-3">
           {[
-            { id: "events", label: "Event Matrix", icon: Calendar },
+            { id: "events", label: "Events", icon: Calendar },
+            { id: "od_requests", label: "OD Matrix", icon: FileText },
+            { id: "users", label: "Students", icon: Users },
             { id: "companies", label: "Partners", icon: Building2 },
-            { id: "internships", label: "Career Hub", icon: Briefcase },
-            { id: "od_requests", label: "OD Approval", icon: FileText },
-            { id: "users", label: "Student Base", icon: Users },
           ].map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100 scale-105' : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'}`}>
+              className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-50'}`}>
               <tab.icon size={20} /> {tab.label}
             </button>
           ))}
         </nav>
-
-        <div className="p-8">
-          <div className="bg-gray-900 rounded-[2rem] p-6 text-white relative overflow-hidden group">
-            <div className="relative z-10">
-              <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2">Check-In</p>
-              <button onClick={() => setIsScanning(true)} className="flex items-center gap-2 font-bold text-sm bg-white/10 w-full p-3 rounded-xl hover:bg-white hover:text-black transition-all">
-                <QrCode size={16}/> SCAN TICKETS
-              </button>
-            </div>
-          </div>
-          <button onClick={() => { document.cookie = "admin-auth=; max-age=0"; window.location.reload() }} className="w-full mt-6 flex items-center justify-center gap-2 py-4 rounded-2xl text-gray-400 hover:text-red-500 transition-all font-bold text-xs tracking-widest uppercase">
-            <LogOut size={16} /> Termination
-          </button>
-        </div>
+        <button onClick={() => setIsScanning(true)} className="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2">
+          <QrCode size={18}/> GATE SCANNER
+        </button>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 p-8 lg:p-16 overflow-y-auto h-screen">
-        <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-8 mb-16">
-          <div>
-            <div className="flex items-center gap-2 text-indigo-600 font-bold text-xs uppercase tracking-[0.3em] mb-3">
-              <div className="w-8 h-[2px] bg-indigo-600" /> Automated OD Sync On
-            </div>
-            <h2 className="text-5xl font-black text-gray-900 tracking-tight capitalize">
-              {activeTab.replace('_', ' ')}
-            </h2>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <div className="relative group">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-indigo-500 transition-colors" size={20} />
-              <input type="text" placeholder="Search parameters..." 
-                className="pl-14 pr-6 py-4 bg-white border border-gray-100 rounded-3xl outline-none focus:ring-4 focus:ring-indigo-500/5 w-80 shadow-sm transition-all"
-                value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
-            </div>
-            {activeTab !== 'users' && activeTab !== 'od_requests' && (
-              <button onClick={() => setEditingItem({})} className="bg-gray-900 text-white font-black px-8 py-4 rounded-3xl shadow-2xl hover:scale-105 transition-all flex items-center gap-3">
-                <Plus size={24} /> CREATE NEW
-              </button>
-            )}
+      <main className="flex-1 p-8 lg:p-12 overflow-y-auto">
+        <header className="flex justify-between items-end mb-12">
+          <h2 className="text-4xl font-black text-gray-900 capitalize">{activeTab.replace('_', ' ')}</h2>
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+            <input type="text" placeholder="Search..." className="pl-12 pr-6 py-3 bg-white border border-gray-100 rounded-2xl outline-none w-64" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
           </div>
         </header>
 
-        {/* Analytics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
-          <StatCard title="Active Events" value={Object.keys(data.events).length} icon={Calendar} color="text-blue-600" />
-          <StatCard title="Pending OD" value={Object.values(data.od_requests).filter((r:any)=>r.status==='Pending').length} icon={FileText} color="text-orange-600" trend="Requires Approval" />
-          <StatCard title="Students" value={Object.keys(data.users).length} icon={Users} color="text-green-600" />
-          <StatCard title="Open Roles" value={Object.keys(data.internships).length} icon={Briefcase} color="text-purple-600" />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-          <div className="lg:col-span-8 space-y-8">
-            {activeTab === 'od_requests' ? (
-              <div className="space-y-4">
-                {getFilteredData().map(([id, req]: any) => <ODRequestItem key={id} request={{...req, id}} onAction={handleODAction} />)}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {getFilteredData().map(([id, item]: any) => (
-                  <div key={id} className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden group hover:shadow-2xl transition-all duration-500">
-                    <div className="h-56 overflow-hidden relative">
-                      <img src={item.image || item.logoUrl || PLACEHOLDER_IMAGE} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="p-8">
-                      <div className="flex justify-between items-start mb-4">
-                        <h3 className="font-black text-xl text-gray-900 line-clamp-1">{item.title || item.name}</h3>
-                        <div className="flex gap-2">
-                          <button onClick={() => setEditingItem({...item, id})} className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"><Edit3 size={18} /></button>
-                          <button onClick={() => confirm("Delete entry?") && remove(ref(database, `${activeTab}/${id}`))} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={18} /></button>
-                        </div>
-                      </div>
-                      <p className="text-sm text-gray-500 line-clamp-2 mb-6 font-medium leading-relaxed">{item.description || item.email || "Platform resource..."}</p>
-                      <div className="flex items-center justify-between pt-6 border-t border-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                        <span>{item.location?.address || item.headquarters || "Remote"}</span>
-                        <ChevronRight size={14} />
-                      </div>
-                    </div>
+        {/* Dynamic Content Views */}
+        {activeTab === 'od_requests' ? (
+          <div className="max-w-4xl space-y-6">
+            {getFilteredData().map(([id, req]: any) => (
+              <ODRequestItem key={id} request={{...req, id}} student={data.users[req.userId]} onAction={handleODAction} />
+            ))}
+          </div>
+        ) : activeTab === 'users' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {getFilteredData().map(([id, user]: any) => (
+              <div key={id} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm flex flex-col justify-between">
+                <div>
+                  <h3 className="font-black text-xl mb-1">{user.name || "SRM Student"}</h3>
+                  <p className="text-gray-400 text-sm mb-4">{user.email}</p>
+                  <div className="flex gap-2 flex-wrap">
+                    <Badge color="blue">Tickets: {user.tickets ? Object.keys(user.tickets).length : 0}</Badge>
+                    <Badge color="orange">{user.phone || "No Phone"}</Badge>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="lg:col-span-4">
-            {editingItem ? (
-              <div className="bg-white rounded-[2.5rem] border border-gray-100 p-10 shadow-2xl sticky top-8 animate-in slide-in-from-right duration-500">
-                <div className="flex items-center justify-between mb-10">
-                  <h3 className="text-2xl font-black tracking-tight">Editor</h3>
-                  <button onClick={() => setEditingItem(null)} className="p-3 hover:bg-gray-100 rounded-2xl text-gray-400 transition-all"><X size={24} /></button>
                 </div>
-                <EditForm type={activeTab} data={editingItem} companies={data.companies} onCancel={() => setEditingItem(null)} 
-                  onSave={async (fd: any) => {
-                    const r = editingItem.id ? ref(database, `${activeTab}/${editingItem.id}`) : push(ref(database, activeTab));
-                    await set(r, fd); setEditingItem(null);
-                  }} 
-                />
-              </div>
-            ) : (
-              <div className="bg-indigo-600 rounded-[2.5rem] p-12 text-white shadow-2xl shadow-indigo-200 sticky top-8 hidden xl:block">
-                <Sparkles className="mb-6 opacity-50" size={48} />
-                <h3 className="text-3xl font-black mb-4 leading-tight">Sync Active</h3>
-                <p className="opacity-70 text-sm font-medium leading-relaxed mb-8">Ticket check-ins are currently synchronized with the OD Approval Matrix for SRMIST policy compliance.</p>
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"><Shield size={18}/></div>
-                  <span className="text-xs font-bold tracking-widest opacity-50">AUTOMATED OD MODE</span>
+                <div className="mt-6 pt-6 border-t border-gray-50 flex gap-2">
+                  <button onClick={() => addManualTicket(id)} className="flex-1 bg-indigo-50 text-indigo-600 font-bold py-3 rounded-xl text-xs flex items-center justify-center gap-2">
+                    <Ticket size={14}/> ADD TICKET
+                  </button>
+                  <button onClick={() => confirm("Delete user?") && remove(ref(database, `users/${id}`))} className="p-3 bg-red-50 text-red-500 rounded-xl">
+                    <Trash2 size={16}/>
+                  </button>
                 </div>
               </div>
-            )}
+            ))}
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-8">
+             {getFilteredData().map(([id, item]: any) => (
+               <div key={id} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">
+                  <img src={item.image || item.logoUrl || PLACEHOLDER_IMAGE} className="w-full h-40 object-cover rounded-2xl mb-4" />
+                  <h3 className="font-black text-lg">{item.title || item.name}</h3>
+                  <div className="flex justify-end gap-2 mt-4">
+                     <button onClick={() => setEditingItem({...item, id})} className="p-2 bg-gray-50 rounded-lg text-indigo-600"><Edit3 size={16}/></button>
+                     <button onClick={() => remove(ref(database, `${activeTab}/${id}`))} className="p-2 bg-red-50 rounded-lg text-red-600"><Trash2 size={16}/></button>
+                  </div>
+               </div>
+             ))}
+          </div>
+        )}
       </main>
 
-      {/* Check-In Modal */}
+      {/* Gatekeeper Scanner Modal */}
       {isScanning && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-6">
-          <div className="w-full max-w-lg bg-white rounded-[3rem] p-10 relative">
-            <button onClick={() => {setIsScanning(false); setScanResult(null)}} className="absolute top-8 right-8 p-3 hover:bg-gray-100 rounded-2xl transition-all"><X /></button>
-            <div className="text-center mb-8">
-              <QrCode className="mx-auto text-indigo-600 mb-4" size={48} />
-              <h2 className="text-2xl font-black">Gatekeeper Console</h2>
-              <p className="text-gray-400 text-sm font-bold uppercase tracking-widest mt-1">Checking in will auto-trigger OD Approval</p>
+        <div className="fixed inset-0 z-50 bg-gray-900/60 backdrop-blur-md flex items-center justify-center p-6">
+          <div className="w-full max-w-md bg-white rounded-[3rem] p-10 shadow-2xl">
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-2xl font-black">Gate Entry Scanner</h3>
+              <button onClick={() => setIsScanning(false)} className="text-gray-400"><X /></button>
             </div>
-            
-            <div className="space-y-6">
-              <input type="text" placeholder="Enter Booking ID" onKeyDown={(e:any) => e.key === 'Enter' && handleQuickCheckIn(e.target.value)} 
-                className="w-full text-center py-5 bg-gray-50 border-2 border-dashed border-gray-200 rounded-3xl outline-none focus:border-indigo-500 font-mono text-xl" />
-              
-              {scanResult?.loading && <div className="text-center animate-pulse text-indigo-600 font-bold">Accessing Database...</div>}
-              {scanResult?.success && (
-                <div className="bg-green-50 border border-green-100 p-6 rounded-3xl text-center">
-                  <CheckCircle2 className="mx-auto text-green-600 mb-2" />
-                  <p className="text-green-800 font-black text-lg">ACCESS GRANTED</p>
-                  <p className="text-green-600 text-sm font-bold">{scanResult.name} verified for {scanResult.event}. OD Requested.</p>
-                </div>
-              )}
-              {scanResult?.error && (
-                <div className="bg-red-50 border border-red-100 p-6 rounded-3xl text-center">
-                  <AlertCircle className="mx-auto text-red-600 mb-2" />
-                  <p className="text-red-800 font-black">INVALID ID</p>
-                  <p className="text-red-600 text-xs font-bold">Please check the booking reference.</p>
-                </div>
-              )}
-            </div>
+            <input autoFocus type="text" placeholder="Scan Booking ID" className="w-full py-5 text-center bg-gray-50 rounded-2xl font-mono text-2xl border-2 border-indigo-100 mb-6" onKeyDown={(e:any) => e.key === 'Enter' && handleQuickCheckIn(e.target.value)} />
+            {scanResult?.success && (
+              <div className="p-6 bg-green-50 rounded-2xl text-center">
+                <CheckCircle2 className="mx-auto text-green-600 mb-2" size={32} />
+                <p className="font-black text-green-800">CHECKED IN</p>
+                <p className="text-green-600 text-sm">{scanResult.name} verified.</p>
+              </div>
+            )}
           </div>
         </div>
       )}
