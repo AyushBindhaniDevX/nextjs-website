@@ -48,7 +48,11 @@ function ODRequestItem({ request, onAction }: any) {
       </div>
       
       <div className="flex items-center gap-3">
-        <a href={request.proofUrl} target="_blank" className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-2 rounded-lg hover:bg-indigo-100 transition-colors">VIEW PROOF</a>
+        {request.proofUrl === "Verified by Gatekeeper Scan" ? (
+          <span className="text-[10px] font-black text-green-600 bg-green-50 px-3 py-2 rounded-lg border border-green-100">AUTO-VERIFIED</span>
+        ) : (
+          <a href={request.proofUrl} target="_blank" className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-2 rounded-lg hover:bg-indigo-100 transition-colors">VIEW PROOF</a>
+        )}
         <button onClick={() => onAction(request.id, 'Approved')} className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-all"><CheckCircle2 size={18}/></button>
         <button onClick={() => onAction(request.id, 'Rejected')} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-all"><X size={18}/></button>
       </div>
@@ -163,18 +167,36 @@ export default function AdminDashboard() {
     await update(ref(database, `od_requests/${requestId}`), { status });
   }
 
+  // --- UPDATED CHECK-IN LOGIC WITH AUTO-OD ---
   const handleQuickCheckIn = async (bookingId: string) => {
-    // Logic to find booking in user nodes and update status to 'checked_in'
     setScanResult({ loading: true });
-    // This is a simplified lookup
     let found = false;
+
     Object.entries(data.users).forEach(([uid, user]: any) => {
       if (user.tickets && user.tickets[bookingId]) {
+        const ticket = user.tickets[bookingId];
+        
+        // 1. Update Ticket Status
         update(ref(database, `users/${uid}/tickets/${bookingId}`), { status: 'checked_in' });
-        setScanResult({ success: true, name: user.name, event: user.tickets[bookingId].eventTitle });
+        
+        // 2. Automated OD Request Generation
+        const odRequestRef = push(ref(database, 'od_requests'));
+        set(odRequestRef, {
+          userId: uid,
+          userName: user.name || user.username || "SRM Student",
+          eventId: ticket.eventId,
+          eventTitle: ticket.eventTitle,
+          submittedAt: new Date().toLocaleString(),
+          status: 'Pending',
+          proofUrl: "Verified by Gatekeeper Scan", // Special status for automated verification
+          reason: "Event Attendance (Verified via Exosphere Scan)"
+        });
+
+        setScanResult({ success: true, name: user.name || user.username, event: ticket.eventTitle });
         found = true;
       }
     });
+
     if (!found) setScanResult({ error: "Invalid Booking ID" });
   }
 
@@ -205,7 +227,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex text-gray-900 selection:bg-indigo-100">
-      {/* Dynamic Sidebar */}
+      {/* Sidebar */}
       <aside className="w-72 bg-white border-r border-gray-100 hidden xl:flex flex-col sticky top-0 h-screen shadow-sm">
         <div className="p-10 flex items-center gap-4">
           <div className="w-12 h-12 bg-gradient-to-tr from-indigo-600 to-violet-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
@@ -216,11 +238,11 @@ export default function AdminDashboard() {
 
         <nav className="flex-1 px-6 space-y-2">
           {[
-            { id: "events", label: "Event Matrix", icon: Calendar, color: "text-blue-500" },
-            { id: "companies", label: "Partners", icon: Building2, color: "text-purple-500" },
-            { id: "internships", label: "Career Hub", icon: Briefcase, color: "text-orange-500" },
-            { id: "od_requests", label: "OD Approval", icon: FileText, color: "text-red-500" },
-            { id: "users", label: "Student Base", icon: Users, color: "text-green-500" },
+            { id: "events", label: "Event Matrix", icon: Calendar },
+            { id: "companies", label: "Partners", icon: Building2 },
+            { id: "internships", label: "Career Hub", icon: Briefcase },
+            { id: "od_requests", label: "OD Approval", icon: FileText },
+            { id: "users", label: "Student Base", icon: Users },
           ].map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100 scale-105' : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'}`}>
@@ -232,7 +254,7 @@ export default function AdminDashboard() {
         <div className="p-8">
           <div className="bg-gray-900 rounded-[2rem] p-6 text-white relative overflow-hidden group">
             <div className="relative z-10">
-              <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2">Quick Action</p>
+              <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2">Check-In</p>
               <button onClick={() => setIsScanning(true)} className="flex items-center gap-2 font-bold text-sm bg-white/10 w-full p-3 rounded-xl hover:bg-white hover:text-black transition-all">
                 <QrCode size={16}/> SCAN TICKETS
               </button>
@@ -249,7 +271,7 @@ export default function AdminDashboard() {
         <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-8 mb-16">
           <div>
             <div className="flex items-center gap-2 text-indigo-600 font-bold text-xs uppercase tracking-[0.3em] mb-3">
-              <div className="w-8 h-[2px] bg-indigo-600" /> System Operational
+              <div className="w-8 h-[2px] bg-indigo-600" /> Automated OD Sync On
             </div>
             <h2 className="text-5xl font-black text-gray-900 tracking-tight capitalize">
               {activeTab.replace('_', ' ')}
@@ -271,12 +293,12 @@ export default function AdminDashboard() {
           </div>
         </header>
 
-        {/* Dynamic Analytics Bar */}
+        {/* Analytics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
-          <StatCard title="Global Events" value={Object.keys(data.events).length} icon={Calendar} color="text-blue-600" trend="+12% this month" />
-          <StatCard title="OD Requests" value={Object.values(data.od_requests).filter((r:any)=>r.status==='Pending').length} icon={FileText} color="text-orange-600" trend="Action Required" />
-          <StatCard title="Talent Base" value={Object.keys(data.users).length} icon={Users} color="text-green-600" trend="Active Students" />
-          <StatCard title="Career Roles" value={Object.keys(data.internships).length} icon={Briefcase} color="text-purple-600" trend="Partner Roles" />
+          <StatCard title="Active Events" value={Object.keys(data.events).length} icon={Calendar} color="text-blue-600" />
+          <StatCard title="Pending OD" value={Object.values(data.od_requests).filter((r:any)=>r.status==='Pending').length} icon={FileText} color="text-orange-600" trend="Requires Approval" />
+          <StatCard title="Students" value={Object.keys(data.users).length} icon={Users} color="text-green-600" />
+          <StatCard title="Open Roles" value={Object.keys(data.internships).length} icon={Briefcase} color="text-purple-600" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
@@ -290,22 +312,19 @@ export default function AdminDashboard() {
                 {getFilteredData().map(([id, item]: any) => (
                   <div key={id} className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden group hover:shadow-2xl transition-all duration-500">
                     <div className="h-56 overflow-hidden relative">
-                      <img src={item.image || item.logoUrl || PLACEHOLDER_IMAGE} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-8">
-                         <p className="text-white text-xs font-bold tracking-widest">{item.category || "GENERAL"}</p>
-                      </div>
+                      <img src={item.image || item.logoUrl || PLACEHOLDER_IMAGE} className="w-full h-full object-cover" />
                     </div>
                     <div className="p-8">
                       <div className="flex justify-between items-start mb-4">
                         <h3 className="font-black text-xl text-gray-900 line-clamp-1">{item.title || item.name}</h3>
                         <div className="flex gap-2">
                           <button onClick={() => setEditingItem({...item, id})} className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"><Edit3 size={18} /></button>
-                          <button onClick={() => confirm("Wipe from DB?") && remove(ref(database, `${activeTab}/${id}`))} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={18} /></button>
+                          <button onClick={() => confirm("Delete entry?") && remove(ref(database, `${activeTab}/${id}`))} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={18} /></button>
                         </div>
                       </div>
-                      <p className="text-sm text-gray-500 line-clamp-2 mb-6 font-medium leading-relaxed">{item.description || item.email || "System resource entry..."}</p>
+                      <p className="text-sm text-gray-500 line-clamp-2 mb-6 font-medium leading-relaxed">{item.description || item.email || "Platform resource..."}</p>
                       <div className="flex items-center justify-between pt-6 border-t border-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                        <span className="flex items-center gap-1"><MapPin size={12}/> {item.location?.address || item.headquarters || "Global"}</span>
+                        <span>{item.location?.address || item.headquarters || "Remote"}</span>
                         <ChevronRight size={14} />
                       </div>
                     </div>
@@ -315,7 +334,6 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          {/* Contextual Sidebar Editor */}
           <div className="lg:col-span-4">
             {editingItem ? (
               <div className="bg-white rounded-[2.5rem] border border-gray-100 p-10 shadow-2xl sticky top-8 animate-in slide-in-from-right duration-500">
@@ -331,14 +349,13 @@ export default function AdminDashboard() {
                 />
               </div>
             ) : (
-              <div className="bg-indigo-600 rounded-[2.5rem] p-12 text-white shadow-2xl shadow-indigo-200 sticky top-8 hidden xl:block overflow-hidden group">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-white/20 transition-all" />
+              <div className="bg-indigo-600 rounded-[2.5rem] p-12 text-white shadow-2xl shadow-indigo-200 sticky top-8 hidden xl:block">
                 <Sparkles className="mb-6 opacity-50" size={48} />
-                <h3 className="text-3xl font-black mb-4 leading-tight relative z-10">Database Ready</h3>
-                <p className="opacity-70 text-sm font-medium leading-relaxed mb-8 relative z-10">Select an entity from the stream to begin modification, or launch a new instance using the primary create action.</p>
-                <div className="flex items-center gap-4 relative z-10">
+                <h3 className="text-3xl font-black mb-4 leading-tight">Sync Active</h3>
+                <p className="opacity-70 text-sm font-medium leading-relaxed mb-8">Ticket check-ins are currently synchronized with the OD Approval Matrix for SRMIST policy compliance.</p>
+                <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"><Shield size={18}/></div>
-                  <span className="text-xs font-bold tracking-widest opacity-50">SECURE MODE</span>
+                  <span className="text-xs font-bold tracking-widest opacity-50">AUTOMATED OD MODE</span>
                 </div>
               </div>
             )}
@@ -346,34 +363,34 @@ export default function AdminDashboard() {
         </div>
       </main>
 
-      {/* QR Scanner Overlay */}
+      {/* Check-In Modal */}
       {isScanning && (
         <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-6">
-          <div className="w-full max-w-lg bg-white rounded-[3rem] p-10 relative overflow-hidden">
+          <div className="w-full max-w-lg bg-white rounded-[3rem] p-10 relative">
             <button onClick={() => {setIsScanning(false); setScanResult(null)}} className="absolute top-8 right-8 p-3 hover:bg-gray-100 rounded-2xl transition-all"><X /></button>
             <div className="text-center mb-8">
               <QrCode className="mx-auto text-indigo-600 mb-4" size={48} />
-              <h2 className="text-2xl font-black">Gatekeeper Terminal</h2>
-              <p className="text-gray-400 text-sm font-bold uppercase tracking-widest mt-1">Manual ID Entry for Check-in</p>
+              <h2 className="text-2xl font-black">Gatekeeper Console</h2>
+              <p className="text-gray-400 text-sm font-bold uppercase tracking-widest mt-1">Checking in will auto-trigger OD Approval</p>
             </div>
             
             <div className="space-y-6">
-              <input type="text" placeholder="Enter Booking ID (e.g. BK123)" onKeyDown={(e:any) => e.key === 'Enter' && handleQuickCheckIn(e.target.value)} 
+              <input type="text" placeholder="Enter Booking ID" onKeyDown={(e:any) => e.key === 'Enter' && handleQuickCheckIn(e.target.value)} 
                 className="w-full text-center py-5 bg-gray-50 border-2 border-dashed border-gray-200 rounded-3xl outline-none focus:border-indigo-500 font-mono text-xl" />
               
-              {scanResult?.loading && <div className="text-center animate-pulse text-indigo-600 font-bold">Verifying Signal...</div>}
+              {scanResult?.loading && <div className="text-center animate-pulse text-indigo-600 font-bold">Accessing Database...</div>}
               {scanResult?.success && (
-                <div className="bg-green-50 border border-green-100 p-6 rounded-3xl text-center animate-in zoom-in duration-300">
+                <div className="bg-green-50 border border-green-100 p-6 rounded-3xl text-center">
                   <CheckCircle2 className="mx-auto text-green-600 mb-2" />
                   <p className="text-green-800 font-black text-lg">ACCESS GRANTED</p>
-                  <p className="text-green-600 text-sm font-bold">{scanResult.name} checked into {scanResult.event}</p>
+                  <p className="text-green-600 text-sm font-bold">{scanResult.name} verified for {scanResult.event}. OD Requested.</p>
                 </div>
               )}
               {scanResult?.error && (
                 <div className="bg-red-50 border border-red-100 p-6 rounded-3xl text-center">
                   <AlertCircle className="mx-auto text-red-600 mb-2" />
-                  <p className="text-red-800 font-black">ACCESS DENIED</p>
-                  <p className="text-red-600 text-xs font-bold">{scanResult.error}</p>
+                  <p className="text-red-800 font-black">INVALID ID</p>
+                  <p className="text-red-600 text-xs font-bold">Please check the booking reference.</p>
                 </div>
               )}
             </div>
