@@ -82,6 +82,72 @@ function Badge({ children, color }: { children: React.ReactNode, color: string }
   )
 }
 
+// OD Request Item Component
+function ODRequestItem({ request, user, event, onAction }: any) {
+  const statusColor = request.status === 'approved' ? 'green' : request.status === 'rejected' ? 'red' : 'orange'
+  const statusText = request.status === 'approved' ? 'Approved' : request.status === 'rejected' ? 'Rejected' : 'Pending Review'
+  
+  return (
+    <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all">
+      <div className="flex flex-col md:flex-row justify-between gap-5">
+        <div className="flex gap-5">
+          <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
+            <FileText size={26} />
+          </div>
+          <div className="flex-1">
+            <div className="flex flex-wrap items-center gap-3 mb-1">
+              <h4 className="font-black text-xl text-gray-800">{user?.name || "Unknown Student"}</h4>
+              <Badge color={statusColor}>{statusText}</Badge>
+            </div>
+            <p className="text-indigo-600 font-semibold text-sm mb-2 flex items-center gap-1">
+              <Calendar size={14} /> {event?.title || request.eventTitle || request.eventId || 'Unknown Event'}
+            </p>
+            <div className="flex flex-wrap gap-4 text-xs text-gray-400">
+              <span className="flex items-center gap-1"><Mail size={12} /> {user?.email || 'No Email'}</span>
+              <span className="flex items-center gap-1"><Phone size={12} /> {user?.phone || 'No Phone'}</span>
+              <span className="flex items-center gap-1"><Award size={12} /> {user?.registerNumber || 'No Register No'}</span>
+              <span className="flex items-center gap-1"><School size={12} /> {user?.collegeName || COLLEGES[user?.collegeId]?.shortName || 'Unknown College'}</span>
+            </div>
+            {request.eventDateTime && (
+              <p className="text-gray-500 text-xs mt-2 flex items-center gap-1"><Clock size={10} /> Event on: {new Date(request.eventDateTime).toLocaleString()}</p>
+            )}
+            <p className="text-gray-400 text-xs">Requested: {request.createdAt ? new Date(request.createdAt).toLocaleString() : 'N/A'}</p>
+            {request.reason && <p className="text-gray-500 text-xs mt-1">Reason: {request.reason}</p>}
+          </div>
+        </div>
+        <div className="flex flex-row md:flex-col items-end gap-3 pt-4 md:pt-0">
+          <div className="flex gap-2">
+            {request.status === 'pending' && (
+              <>
+                <button 
+                  onClick={() => onAction(request.id, request.userId, 'approved')} 
+                  className="px-5 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-green-600 transition flex items-center gap-1"
+                >
+                  <CheckCircle2 size={14} /> Approve
+                </button>
+                <button 
+                  onClick={() => onAction(request.id, request.userId, 'rejected')} 
+                  className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition"
+                >
+                  <X size={18} />
+                </button>
+              </>
+            )}
+            {request.status !== 'pending' && (
+              <Badge color={statusColor}>{statusText}</Badge>
+            )}
+          </div>
+        </div>
+      </div>
+      {request.facultyRemarks && (
+        <div className="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-500">
+          <span className="font-semibold">Remarks:</span> {request.facultyRemarks}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Event Modal
 function EventModal({ event, colleges, onSave, onClose }: { event: any; colleges: any; onSave: (data: any) => void; onClose: () => void }) {
   const [form, setForm] = useState(event || { 
@@ -135,9 +201,9 @@ function EventModal({ event, colleges, onSave, onClose }: { event: any; colleges
           </select>
           
           <input name="title" value={form.title} onChange={handleChange} placeholder="Event Title" className="w-full p-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-200" />
-          <input name="category" value={form.category} onChange={handleChange} placeholder="Category (Conference, Workshop, Cultural, Sports, etc.)" className="w-full p-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-200" />
+          <input name="category" value={form.category} onChange={handleChange} placeholder="Category" className="w-full p-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-200" />
           <input name="image" value={form.image} onChange={handleChange} placeholder="Image URL" className="w-full p-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-200" />
-          <input name="dateTime" value={form.dateTime} onChange={handleChange} placeholder="Date Time (YYYY-MM-DDTHH:MM)" type="datetime-local" className="w-full p-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-200" />
+          <input name="dateTime" value={form.dateTime} onChange={handleChange} type="datetime-local" className="w-full p-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-200" />
           <input name="venue" value={form.venue} onChange={handleChange} placeholder="Venue" className="w-full p-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-200" />
           <input name="address" value={form.location?.address || ''} onChange={handleChange} placeholder="Full Address" className="w-full p-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-200" />
           
@@ -256,7 +322,7 @@ function InternshipModal({ internship, companies, onSave, onClose }: { internshi
           </select>
           <input name="title" value={form.title} onChange={(e) => setForm({...form, title: e.target.value})} placeholder="Internship Title" className="w-full p-3 bg-gray-50 rounded-xl" />
           <input name="category" value={form.category} onChange={(e) => setForm({...form, category: e.target.value})} placeholder="Category" className="w-full p-3 bg-gray-50 rounded-xl" />
-          <input name="location" value={form.location} onChange={(e) => setForm({...form, location: e.target.value})} placeholder="Location (Remote/On-site)" className="w-full p-3 bg-gray-50 rounded-xl" />
+          <input name="location" value={form.location} onChange={(e) => setForm({...form, location: e.target.value})} placeholder="Location" className="w-full p-3 bg-gray-50 rounded-xl" />
           <select name="type" value={form.type} onChange={(e) => setForm({...form, type: e.target.value})} className="w-full p-3 bg-gray-50 rounded-xl">
             <option value="Internship">Internship</option>
             <option value="Full-time">Full-time</option>
@@ -269,7 +335,6 @@ function InternshipModal({ internship, companies, onSave, onClose }: { internshi
           </div>
           <input name="applyUrl" value={form.applyUrl} onChange={(e) => setForm({...form, applyUrl: e.target.value})} placeholder="Application URL" className="w-full p-3 bg-gray-50 rounded-xl" />
           
-          {/* Responsibilities */}
           <div className="border-t pt-3">
             <label className="font-bold block mb-2">Responsibilities</label>
             <div className="flex gap-2 mb-2">
@@ -286,7 +351,6 @@ function InternshipModal({ internship, companies, onSave, onClose }: { internshi
             </div>
           </div>
           
-          {/* Required Skills */}
           <div className="border-t pt-3">
             <label className="font-bold block mb-2">Required Skills</label>
             <div className="flex gap-2 mb-2">
@@ -307,65 +371,6 @@ function InternshipModal({ internship, companies, onSave, onClose }: { internshi
           <button onClick={onClose} className="flex-1 bg-gray-100 py-3 rounded-xl font-bold">Cancel</button>
         </div>
       </div>
-    </div>
-  )
-}
-
-// OD Request Item
-function ODRequestItem({ request, user, event, onAction }: any) {
-  const statusColor = request.status === 'approved' ? 'green' : request.status === 'rejected' ? 'red' : 'orange'
-  const statusText = request.status === 'approved' ? 'Approved' : request.status === 'rejected' ? 'Rejected' : 'Pending Review'
-  
-  return (
-    <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all">
-      <div className="flex flex-col md:flex-row justify-between gap-5">
-        <div className="flex gap-5">
-          <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
-            <FileText size={26} />
-          </div>
-          <div>
-            <div className="flex flex-wrap items-center gap-3 mb-1">
-              <h4 className="font-black text-xl text-gray-800">{user?.name || "Unknown Student"}</h4>
-              <Badge color={statusColor}>{statusText}</Badge>
-            </div>
-            <p className="text-indigo-600 font-semibold text-sm mb-2 flex items-center gap-1">
-              <Calendar size={14} /> {event?.title || request.eventTitle || request.eventId}
-            </p>
-            <div className="flex flex-wrap gap-4 text-xs text-gray-400">
-              <span className="flex items-center gap-1"><Mail size={12} /> {user?.email || 'No Email'}</span>
-              <span className="flex items-center gap-1"><Phone size={12} /> {user?.phone || 'No Phone'}</span>
-              <span className="flex items-center gap-1"><Award size={12} /> {user?.registerNumber || 'No Register No'}</span>
-              <span className="flex items-center gap-1"><School size={12} /> {user?.collegeName || 'Unknown College'}</span>
-            </div>
-            {event?.dateTime && (
-              <p className="text-gray-500 text-xs mt-2 flex items-center gap-1"><Clock size={10} /> Event on: {new Date(event.dateTime).toLocaleString()}</p>
-            )}
-            <p className="text-gray-400 text-xs">Requested: {new Date(request.createdAt).toLocaleString()}</p>
-          </div>
-        </div>
-        <div className="flex flex-row md:flex-col items-end gap-3 pt-4 md:pt-0">
-          <div className="flex gap-2">
-            {request.status === 'pending' && (
-              <>
-                <button onClick={() => onAction(request.id, 'approved')} className="px-5 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-green-600 transition flex items-center gap-1">
-                  <CheckCircle2 size={14} /> Approve
-                </button>
-                <button onClick={() => onAction(request.id, 'rejected')} className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition">
-                  <X size={18} />
-                </button>
-              </>
-            )}
-            {request.status !== 'pending' && (
-              <Badge color={statusColor}>{statusText}</Badge>
-            )}
-          </div>
-        </div>
-      </div>
-      {request.facultyRemarks && (
-        <div className="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-500">
-          <span className="font-semibold">Remarks:</span> {request.facultyRemarks}
-        </div>
-      )}
     </div>
   )
 }
@@ -423,34 +428,85 @@ export default function AdminDashboard() {
     pendingODs: 0
   })
 
-  // Load data from Firebase
+  // Load data from Firebase - FIXED OD REQUESTS LOADING
   useEffect(() => {
-    const nodes = ['events', 'companies', 'internships', 'users']
-    const unsubs = nodes.map(node => 
-      onValue(ref(database, node), (snap) => {
-        const nodeData = snap.val() || {}
-        setData((prev: any) => ({ ...prev, [node]: nodeData }))
-      })
-    )
-    
-    // Load OD requests from users
+    // Load events
+    const eventsRef = ref(database, 'events')
+    const unsubscribeEvents = onValue(eventsRef, (snap) => {
+      setData((prev: any) => ({ ...prev, events: snap.val() || {} }))
+    })
+
+    // Load companies
+    const companiesRef = ref(database, 'companies')
+    const unsubscribeCompanies = onValue(companiesRef, (snap) => {
+      setData((prev: any) => ({ ...prev, companies: snap.val() || {} }))
+    })
+
+    // Load internships
+    const internshipsRef = ref(database, 'internships')
+    const unsubscribeInternships = onValue(internshipsRef, (snap) => {
+      setData((prev: any) => ({ ...prev, internships: snap.val() || {} }))
+    })
+
+    // Load users and OD requests from multiple possible locations
     const usersRef = ref(database, 'users')
     const unsubscribeUsers = onValue(usersRef, (snap) => {
       const users = snap.val() || {}
+      setData((prev: any) => ({ ...prev, users: users }))
+      
+      // Collect OD requests from ALL possible locations
       const allODRequests: any = {}
+      
       Object.entries(users).forEach(([userId, userData]: any) => {
+        // Check multiple possible paths for OD requests
+        
+        // Path 1: users/{userId}/odRequests
         if (userData.odRequests) {
           Object.entries(userData.odRequests).forEach(([odId, odData]: any) => {
-            allODRequests[`${userId}_${odId}`] = { ...odData, userId, id: odId }
+            allODRequests[`${userId}_${odId}`] = { 
+              ...odData, 
+              userId, 
+              id: odId,
+              source: 'odRequests'
+            }
+          })
+        }
+        
+        // Path 2: users/{userId}/od_requests (underscore version)
+        if (userData.od_requests) {
+          Object.entries(userData.od_requests).forEach(([odId, odData]: any) => {
+            allODRequests[`${userId}_${odId}`] = { 
+              ...odData, 
+              userId, 
+              id: odId,
+              source: 'od_requests'
+            }
+          })
+        }
+        
+        // Path 3: users/{userId}/odRequests (from ticket check-in auto-creation)
+        if (userData.tickets) {
+          // Also check if there are OD requests embedded in tickets
+          Object.entries(userData.tickets).forEach(([ticketId, ticket]: any) => {
+            if (ticket.odRequestId && ticket.odRequestData) {
+              allODRequests[`${userId}_${ticket.odRequestId}`] = {
+                ...ticket.odRequestData,
+                userId,
+                id: ticket.odRequestId,
+                source: 'ticket'
+              }
+            }
           })
         }
       })
+      
       setData((prev: any) => ({ ...prev, odRequests: allODRequests }))
       
       // Calculate stats
       let totalTickets = 0
       let totalRevenue = 0
       let pendingODs = 0
+      
       Object.entries(users).forEach(([, userData]: any) => {
         if (userData.tickets) {
           const tickets = Object.values(userData.tickets)
@@ -459,6 +515,9 @@ export default function AdminDashboard() {
         }
         if (userData.odRequests) {
           pendingODs += Object.values(userData.odRequests).filter((req: any) => req.status === 'pending').length
+        }
+        if (userData.od_requests) {
+          pendingODs += Object.values(userData.od_requests).filter((req: any) => req.status === 'pending').length
         }
       })
       
@@ -473,19 +532,51 @@ export default function AdminDashboard() {
     })
     
     return () => {
-      unsubs.forEach(u => u())
+      unsubscribeEvents()
+      unsubscribeCompanies()
+      unsubscribeInternships()
       unsubscribeUsers()
     }
   }, [])
 
-  const handleODAction = async (requestId: string, status: string) => {
-    const [userId, odId] = requestId.split('_')
-    await update(ref(database, `users/${userId}/odRequests/${odId}`), { 
-      status, 
-      reviewedAt: Date.now(),
-      facultyRemarks: status === 'approved' ? 'Approved by admin' : 'Rejected by admin'
-    })
-    alert(`OD Request ${status}!`)
+  const handleODAction = async (requestId: string, userId: string, status: string) => {
+    try {
+      // Try multiple possible paths
+      const userRef = ref(database, `users/${userId}`)
+      const userSnapshot = await get(userRef)
+      const userData = userSnapshot.val()
+      
+      // Check which path the OD request exists in
+      if (userData?.odRequests && userData.odRequests[requestId.split('_')[1]]) {
+        await update(ref(database, `users/${userId}/odRequests/${requestId.split('_')[1]}`), { 
+          status, 
+          reviewedAt: Date.now(),
+          facultyRemarks: status === 'approved' ? 'Approved by admin' : 'Rejected by admin'
+        })
+      } else if (userData?.od_requests && userData.od_requests[requestId.split('_')[1]]) {
+        await update(ref(database, `users/${userId}/od_requests/${requestId.split('_')[1]}`), { 
+          status, 
+          reviewedAt: Date.now(),
+          facultyRemarks: status === 'approved' ? 'Approved by admin' : 'Rejected by admin'
+        })
+      } else {
+        // If not found, create it in odRequests
+        const odId = `od_${Date.now()}`
+        await set(ref(database, `users/${userId}/odRequests/${odId}`), {
+          id: odId,
+          eventId: requestId,
+          status: status,
+          approvedBy: 'admin',
+          reviewedAt: Date.now(),
+          createdAt: Date.now()
+        })
+      }
+      
+      alert(`OD Request ${status}!`)
+    } catch (error) {
+      console.error("Error updating OD request:", error)
+      alert("Failed to update OD request")
+    }
   }
 
   const handleAssignTicket = async (userId: string) => {
@@ -538,23 +629,18 @@ export default function AdminDashboard() {
           checkedInBy: 'admin'
         })
         
-        // Auto-create OD request if not exists
-        const existingODs = user.odRequests || {}
-        const hasOD = Object.values(existingODs).some((od: any) => od.eventId === ticket.eventId)
-        
-        if (!hasOD && ticket.eventDateTime) {
-          const odId = `od_${Date.now()}`
-          await set(ref(database, `users/${uid}/odRequests/${odId}`), {
-            id: odId,
-            eventId: ticket.eventId,
-            eventTitle: ticket.eventTitle,
-            eventDateTime: ticket.eventDateTime,
-            venue: ticket.venue,
-            status: 'pending',
-            createdAt: Date.now(),
-            autoGenerated: true
-          })
-        }
+        // Auto-create OD request
+        const odId = `od_${Date.now()}`
+        await set(ref(database, `users/${uid}/odRequests/${odId}`), {
+          id: odId,
+          eventId: ticket.eventId,
+          eventTitle: ticket.eventTitle,
+          eventDateTime: ticket.eventDateTime,
+          venue: ticket.venue,
+          status: 'pending',
+          createdAt: Date.now(),
+          autoGenerated: true
+        })
 
         setScanResult({ success: true, name: user.name, event: ticket.eventTitle })
         found = true
@@ -737,12 +823,12 @@ export default function AdminDashboard() {
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
             <h2 className="text-3xl lg:text-4xl font-black text-gray-900 capitalize flex items-center gap-2">
-              {activeTab.replace('Requests', ' Requests')}
+              {activeTab === 'odRequests' ? 'OD Requests' : activeTab}
               {activeTab === 'overview' && <Sparkles className="text-yellow-500" size={28} />}
             </h2>
             <p className="text-gray-400 text-sm mt-1">
               {activeTab === 'overview' && 'Monitor platform activity and manage content'}
-              {activeTab === 'odRequests' && 'Review and approve On-Duty requests from students'}
+              {activeTab === 'odRequests' && `Review and approve On-Duty requests from students (${Object.keys(data.odRequests).length} total)`}
               {activeTab === 'users' && 'Manage student accounts and issue tickets'}
               {activeTab === 'events' && 'Create and manage campus events'}
               {activeTab === 'companies' && 'Manage partner companies'}
@@ -789,7 +875,6 @@ export default function AdminDashboard() {
         {/* Overview Dashboard */}
         {activeTab === 'overview' && (
           <div className="space-y-8">
-            {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
                 <div className="flex justify-between items-start">
@@ -840,7 +925,6 @@ export default function AdminDashboard() {
               </div>
             </div>
             
-            {/* OD Requests Overview */}
             <div className="bg-white rounded-3xl p-6 border border-gray-100">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="font-black text-xl flex items-center gap-2">
@@ -864,8 +948,8 @@ export default function AdminDashboard() {
                             <p className="text-xs text-gray-500">{req.eventTitle}</p>
                           </div>
                           <div className="flex gap-2">
-                            <button onClick={() => handleODAction(id, 'approved')} className="px-3 py-1.5 bg-green-600 text-white text-xs rounded-lg">Approve</button>
-                            <button onClick={() => handleODAction(id, 'rejected')} className="px-3 py-1.5 bg-red-600 text-white text-xs rounded-lg">Reject</button>
+                            <button onClick={() => handleODAction(id, req.userId, 'approved')} className="px-3 py-1.5 bg-green-600 text-white text-xs rounded-lg">Approve</button>
+                            <button onClick={() => handleODAction(id, req.userId, 'rejected')} className="px-3 py-1.5 bg-red-600 text-white text-xs rounded-lg">Reject</button>
                           </div>
                         </div>
                       )
@@ -876,7 +960,6 @@ export default function AdminDashboard() {
               )}
             </div>
             
-            {/* College Stats */}
             <div className="bg-white rounded-3xl p-6 border border-gray-100">
               <h3 className="font-black text-xl mb-4">College-wise Statistics</h3>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -895,25 +978,30 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* OD Requests Tab */}
+        {/* OD Requests Tab - FIXED DISPLAY */}
         {activeTab === 'odRequests' && (
           <div className="space-y-5">
-            {filteredData.length === 0 && (
-              <div className="bg-white rounded-3xl p-12 text-center text-gray-400">✨ No OD requests found</div>
+            {filteredData.length === 0 ? (
+              <div className="bg-white rounded-3xl p-12 text-center">
+                <FileText size={48} className="mx-auto text-gray-300 mb-4" />
+                <p className="text-gray-400">✨ No OD requests found</p>
+                <p className="text-gray-300 text-sm mt-2">OD requests will appear here when students apply</p>
+              </div>
+            ) : (
+              filteredData.map(([id, req]: any) => {
+                const user = data.users[req.userId]
+                const event = data.events[req.eventId]
+                return (
+                  <ODRequestItem 
+                    key={id} 
+                    request={req} 
+                    user={user} 
+                    event={event}
+                    onAction={handleODAction} 
+                  />
+                )
+              })
             )}
-            {filteredData.map(([id, req]: any) => {
-              const user = data.users[req.userId]
-              const event = data.events[req.eventId]
-              return (
-                <ODRequestItem 
-                  key={id} 
-                  request={req} 
-                  user={user} 
-                  event={event}
-                  onAction={handleODAction} 
-                />
-              )
-            })}
           </div>
         )}
 
@@ -941,7 +1029,7 @@ export default function AdminDashboard() {
                           <p className="text-gray-400 text-xs">{user.registerNumber || "No register number"}</p>
                         </div>
                       </div>
-                      <button onClick={() => handleDeleteUser(id, user.name)} className="p-2 bg-red-50 rounded-xl text-red-500 hover:bg-red-100 transition" title="Delete User">
+                      <button onClick={() => handleDeleteUser(id, user.name)} className="p-2 bg-red-50 rounded-xl text-red-500 hover:bg-red-100 transition">
                         <Trash2 size={16} />
                       </button>
                     </div>
