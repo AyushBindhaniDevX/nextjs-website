@@ -1,4 +1,6 @@
-// AdminDashboard.jsx
+// components/admin/AdminDashboard.jsx
+"use client";
+
 import { useState, useEffect } from "react"
 import { database } from "@/lib/firebase"
 import { ref, onValue, set, push, update, remove, query, orderByChild, equalTo, get } from "firebase/database"
@@ -613,6 +615,11 @@ export default function AdminDashboard() {
     }
   }
 
+  const handleEdit = (item: any, id: string) => {
+    setEditingItem({ ...item, id })
+    setModalType(activeTab)
+  }
+
   const getFilteredData = () => {
     if (activeTab === 'odRequests') {
       let requests = Object.entries(data.odRequests)
@@ -1182,24 +1189,24 @@ export default function AdminDashboard() {
               
               <div className="bg-gray-50 rounded-2xl p-4">
                 <h4 className="font-bold mb-3">🎫 Tickets ({selectedUser.tickets ? Object.keys(selectedUser.tickets).length : 0})</h4>
-              {selectedUser.tickets && Object.values(selectedUser.tickets).length > 0 ? (
-                <div className="space-y-2">
-                  {Object.values(selectedUser.tickets).map((ticket: any, idx: number) => (
-                    <div key={idx} className="flex justify-between items-center p-3 bg-white rounded-xl cursor-pointer hover:bg-indigo-50 transition" onClick={() => setSelectedTicket(ticket)}>
-                      <div>
-                        <p className="font-semibold text-sm">{ticket.eventTitle}</p>
-                        <p className="text-xs text-gray-500">{ticket.eventDateTime ? new Date(ticket.eventDateTime).toLocaleDateString() : 'TBA'}</p>
+                {selectedUser.tickets && Object.values(selectedUser.tickets).length > 0 ? (
+                  <div className="space-y-2">
+                    {Object.values(selectedUser.tickets).map((ticket: any, idx: number) => (
+                      <div key={idx} className="flex justify-between items-center p-3 bg-white rounded-xl cursor-pointer hover:bg-indigo-50 transition" onClick={() => setSelectedTicket(ticket)}>
+                        <div>
+                          <p className="font-semibold text-sm">{ticket.eventTitle}</p>
+                          <p className="text-xs text-gray-500">{ticket.eventDateTime ? new Date(ticket.eventDateTime).toLocaleDateString() : 'TBA'}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge color={ticket.status === 'checked_in' ? 'green' : 'blue'}>{ticket.status || 'active'}</Badge>
+                          <ChevronRight size={16} className="text-gray-400" />
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge color={ticket.status === 'checked_in' ? 'green' : 'blue'}>{ticket.status || 'active'}</Badge>
-                        <ChevronRight size={16} className="text-gray-400" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-400 text-center py-4">No tickets assigned yet</p>
-              )}
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-400 text-center py-4">No tickets assigned yet</p>
+                )}
               </div>
               
               <div className="bg-gray-50 rounded-2xl p-4">
