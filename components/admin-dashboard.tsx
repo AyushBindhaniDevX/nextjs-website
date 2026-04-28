@@ -10,8 +10,14 @@ import {
   CheckCircle2, QrCode, FileText, AlertCircle, Phone, Mail, Ticket, 
   Eye, Clock, MapPin, DollarSign, Globe, Award, Link, List, Star,
   School, Navigation, Filter, Download, CreditCard, CheckCircle, 
-  AlertTriangle, UserCheck, UserX, Settings, TrendingUp, DollarSign as MoneyIcon
+  AlertTriangle, UserCheck, UserX, Settings, TrendingUp, DollarSign as MoneyIcon,
+  BarChart3, PieChart, DownloadCloud, Printer, UserPlus, GraduationCap
 } from "lucide-react"
+import {
+  LineChart, Line, BarChart, Bar, PieChart as RePieChart, Pie,
+  Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, AreaChart, Area
+} from 'recharts'
 
 const ADMIN_PIN = "5152"
 const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=800&auto=format&fit=crop"
@@ -82,16 +88,12 @@ function Badge({ children, color }: { children: React.ReactNode, color: string }
   )
 }
 
-// OD Request Item Component - Updated for your data structure
+// OD Request Item Component
 function ODRequestItem({ request, user, event, onAction }: any) {
   const statusColor = request.status === 'approved' ? 'green' : 
-                      request.status === 'rejected' || request.status === 'Rejected' ? 'red' : 
-                      'orange'
+                      request.status === 'rejected' || request.status === 'Rejected' ? 'red' : 'orange'
   const statusText = request.status === 'approved' ? 'Approved' : 
-                     request.status === 'rejected' || request.status === 'Rejected' ? 'Rejected' : 
-                     'Pending Review'
-  
-  // Handle different status formats
+                     request.status === 'rejected' || request.status === 'Rejected' ? 'Rejected' : 'Pending Review'
   const isPending = request.status === 'pending' || request.status === 'Pending'
   
   return (
@@ -151,6 +153,263 @@ function ODRequestItem({ request, user, event, onAction }: any) {
           <span className="font-semibold">Remarks:</span> {request.facultyRemarks}
         </div>
       )}
+    </div>
+  )
+}
+
+// Edit User Modal
+function EditUserModal({ user, colleges, onSave, onClose }: { user: any; colleges: any; onSave: (data: any) => void; onClose: () => void }) {
+  const [form, setForm] = useState(user || { 
+    name: '', email: '', phone: '', registerNumber: '', 
+    department: '', year: '', collegeId: 'srmist', collegeName: ''
+  })
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const value = e.target.name === 'year' ? parseInt(e.target.value) : e.target.value
+    setForm({ ...form, [e.target.name]: value })
+    
+    if (e.target.name === 'collegeId') {
+      const college = colleges[e.target.value]
+      setForm({ ...form, collegeId: e.target.value, collegeName: college?.name })
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-3xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+        <h3 className="text-2xl font-black mb-4">Edit Student Profile</h3>
+        <div className="space-y-3">
+          <input name="name" value={form.name} onChange={handleChange} placeholder="Full Name" className="w-full p-3 bg-gray-50 rounded-xl" />
+          <input name="email" value={form.email} onChange={handleChange} placeholder="Email" className="w-full p-3 bg-gray-50 rounded-xl" />
+          <input name="phone" value={form.phone} onChange={handleChange} placeholder="Phone Number" className="w-full p-3 bg-gray-50 rounded-xl" />
+          <input name="registerNumber" value={form.registerNumber} onChange={handleChange} placeholder="Register Number" className="w-full p-3 bg-gray-50 rounded-xl" />
+          <input name="department" value={form.department} onChange={handleChange} placeholder="Department" className="w-full p-3 bg-gray-50 rounded-xl" />
+          <input name="year" type="number" value={form.year} onChange={handleChange} placeholder="Year" className="w-full p-3 bg-gray-50 rounded-xl" />
+          
+          <select name="collegeId" value={form.collegeId} onChange={handleChange} className="w-full p-3 bg-gray-50 rounded-xl">
+            {Object.entries(colleges).map(([id, college]: any) => (
+              <option key={id} value={id}>{college.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex gap-3 mt-6">
+          <button onClick={() => onSave(form)} className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold">Save Changes</button>
+          <button onClick={onClose} className="flex-1 bg-gray-100 py-3 rounded-xl font-bold">Cancel</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Event Statistics Modal
+function EventStatisticsModal({ event, onClose, onDownloadAttendance }: { event: any; onClose: () => void; onDownloadAttendance: (eventId: string) => void }) {
+  const [participants, setParticipants] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [registeredCount, setRegisteredCount] = useState(0)
+  const [checkedInCount, setCheckedInCount] = useState(0)
+
+  useEffect(() => {
+    loadEventParticipants()
+  }, [event])
+
+  const loadEventParticipants = async () => {
+    setLoading(true)
+    try {
+      const usersRef = ref(database, 'users')
+      const snapshot = await get(usersRef)
+      const users = snapshot.val() || {}
+      
+      const regParticipants: any[] = []
+      let registered = 0
+      let checkedIn = 0
+      
+      Object.entries(users).forEach(([userId, userData]: any) => {
+        if (userData.tickets) {
+          Object.entries(userData.tickets).forEach(([ticketId, ticket]: any) => {
+            if (ticket.eventId === event.id) {
+              registered++
+              if (ticket.status === 'checked_in') checkedIn++
+              
+              regParticipants.push({
+                userId,
+                name: userData.name,
+                email: userData.email,
+                registerNumber: userData.registerNumber,
+                department: userData.department,
+                collegeId: userData.collegeId,
+                phone: userData.phone,
+                ticketId,
+                ticketStatus: ticket.status,
+                checkedInAt: ticket.checkedInAt,
+                purchaseDate: ticket.createdAt || ticket.purchaseDate
+              })
+            }
+          })
+        }
+      })
+      
+      setParticipants(regParticipants)
+      setRegisteredCount(registered)
+      setCheckedInCount(checkedIn)
+    } catch (error) {
+      console.error("Error loading participants:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Check-in data for chart (hourly)
+  const getCheckInData = () => {
+    const hourly: Record<number, number> = {}
+    participants.forEach(p => {
+      if (p.ticketStatus === 'checked_in' && p.checkedInAt) {
+        const hour = new Date(p.checkedInAt).getHours()
+        hourly[hour] = (hourly[hour] || 0) + 1
+      }
+    })
+    return Object.entries(hourly).map(([hour, count]) => ({ hour: `${hour}:00`, count }))
+  }
+
+  // Department distribution
+  const getDepartmentData = () => {
+    const dept: Record<string, number> = {}
+    participants.forEach(p => {
+      const deptName = p.department || 'Unknown'
+      dept[deptName] = (dept[deptName] || 0) + 1
+    })
+    return Object.entries(dept).map(([name, value]) => ({ name, value }))
+  }
+
+  const COLORS = ['#7C3AED', '#F59E0B', '#10B981', '#EF4444', '#3B82F6', '#EC4899']
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+        <div className="bg-white rounded-3xl max-w-4xl w-full p-8 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-500">Loading statistics...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-auto" onClick={onClose}>
+      <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
+        <div className="sticky top-0 bg-white border-b border-gray-100 p-6 flex justify-between items-center">
+          <div>
+            <h3 className="text-2xl font-black">{event.title}</h3>
+            <p className="text-gray-500 text-sm mt-1">Event Statistics & Analytics</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-800"><X size={24} /></button>
+        </div>
+        
+        <div className="p-6 space-y-6">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-indigo-50 rounded-2xl p-4 text-center">
+              <Users size={24} className="mx-auto text-indigo-600 mb-2" />
+              <p className="text-2xl font-bold">{registeredCount}</p>
+              <p className="text-xs text-gray-500">Registered</p>
+            </div>
+            <div className="bg-green-50 rounded-2xl p-4 text-center">
+              <CheckCircle2 size={24} className="mx-auto text-green-600 mb-2" />
+              <p className="text-2xl font-bold">{checkedInCount}</p>
+              <p className="text-xs text-gray-500">Checked In</p>
+            </div>
+            <div className="bg-yellow-50 rounded-2xl p-4 text-center">
+              <TrendingUp size={24} className="mx-auto text-yellow-600 mb-2" />
+              <p className="text-2xl font-bold">{Math.round((checkedInCount / registeredCount) * 100) || 0}%</p>
+              <p className="text-xs text-gray-500">Attendance Rate</p>
+            </div>
+            <div className="bg-purple-50 rounded-2xl p-4 text-center">
+              <Calendar size={24} className="mx-auto text-purple-600 mb-2" />
+              <p className="text-2xl font-bold">{new Date(event.dateTime).toLocaleDateString()}</p>
+              <p className="text-xs text-gray-500">Event Date</p>
+            </div>
+          </div>
+          
+          {/* Charts */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-gray-50 rounded-2xl p-4">
+              <h4 className="font-bold mb-4">Check-in Timeline</h4>
+              <ResponsiveContainer width="100%" height={250}>
+                <AreaChart data={getCheckInData()}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="hour" />
+                  <YAxis />
+                  <Tooltip />
+                  <Area type="monotone" dataKey="count" stroke="#7C3AED" fill="#7C3AED" fillOpacity={0.3} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            
+            <div className="bg-gray-50 rounded-2xl p-4">
+              <h4 className="font-bold mb-4">Department Distribution</h4>
+              <ResponsiveContainer width="100%" height={250}>
+                <RePieChart>
+                  <Pie
+                    data={getDepartmentData()}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={90}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {getDepartmentData().map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </RePieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+          
+          {/* Participants List */}
+          <div className="bg-gray-50 rounded-2xl p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="font-bold">Registered Participants ({participants.length})</h4>
+              <button 
+                onClick={() => onDownloadAttendance(event.id)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm"
+              >
+                <Download size={14} /> Export CSV
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b border-gray-200">
+                  <tr className="text-left">
+                    <th className="pb-2">Name</th>
+                    <th className="pb-2">Register No</th>
+                    <th className="pb-2">Department</th>
+                    <th className="pb-2">Status</th>
+                    <th className="pb-2">Check-in Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {participants.map((p, idx) => (
+                    <tr key={idx} className="border-b border-gray-100">
+                      <td className="py-2">{p.name}</td>
+                      <td className="py-2">{p.registerNumber}</td>
+                      <td className="py-2">{p.department}</td>
+                      <td className="py-2">
+                        <Badge color={p.ticketStatus === 'checked_in' ? 'green' : 'blue'}>
+                          {p.ticketStatus === 'checked_in' ? 'Checked In' : 'Registered'}
+                        </Badge>
+                      </td>
+                      <td className="py-2">{p.checkedInAt ? new Date(p.checkedInAt).toLocaleTimeString() : '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -425,6 +684,8 @@ export default function AdminDashboard() {
   const [scanResult, setScanResult] = useState<any>(null)
   const [selectedTicket, setSelectedTicket] = useState<any>(null)
   const [selectedUser, setSelectedUser] = useState<any>(null)
+  const [editingUser, setEditingUser] = useState<any>(null)
+  const [selectedEventForStats, setSelectedEventForStats] = useState<any>(null)
   const [selectedCollegeFilter, setSelectedCollegeFilter] = useState("all")
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -435,9 +696,8 @@ export default function AdminDashboard() {
     pendingODs: 0
   })
 
-  // Load data from Firebase - FIXED to read from both odRequests and od_requests
+  // Load data from Firebase
   useEffect(() => {
-    // Load events
     const eventsRef = ref(database, 'events')
     const unsubscribeEvents = onValue(eventsRef, (snap) => {
       const events = snap.val() || {}
@@ -445,38 +705,31 @@ export default function AdminDashboard() {
       setStats(prev => ({ ...prev, totalEvents: Object.keys(events).length }))
     })
 
-    // Load companies
     const companiesRef = ref(database, 'companies')
     const unsubscribeCompanies = onValue(companiesRef, (snap) => {
       setData((prev: any) => ({ ...prev, companies: snap.val() || {} }))
     })
 
-    // Load internships
     const internshipsRef = ref(database, 'internships')
     const unsubscribeInternships = onValue(internshipsRef, (snap) => {
       setData((prev: any) => ({ ...prev, internships: snap.val() || {} }))
     })
 
-    // Load OD requests from BOTH locations
     const odRequestsRef = ref(database, 'odRequests')
     const unsubscribeODRequests = onValue(odRequestsRef, (snap) => {
-      const odRequests = snap.val() || {}
-      setData((prev: any) => ({ ...prev, odRequests }))
+      setData((prev: any) => ({ ...prev, odRequests: snap.val() || {} }))
     })
 
     const odRequestsOldRef = ref(database, 'od_requests')
     const unsubscribeODRequestsOld = onValue(odRequestsOldRef, (snap) => {
-      const odRequestsOld = snap.val() || {}
-      setData((prev: any) => ({ ...prev, odRequestsOld }))
+      setData((prev: any) => ({ ...prev, odRequestsOld: snap.val() || {} }))
     })
 
-    // Load users
     const usersRef = ref(database, 'users')
     const unsubscribeUsers = onValue(usersRef, (snap) => {
       const users = snap.val() || {}
       setData((prev: any) => ({ ...prev, users }))
       
-      // Calculate stats
       let totalTickets = 0
       let totalRevenue = 0
       let pendingODs = 0
@@ -514,23 +767,20 @@ export default function AdminDashboard() {
     }
   }, [])
 
-  // Combine OD requests from all sources
+  // Combine all OD requests
   const getAllODRequests = () => {
     const allRequests: any = {}
     
-    // Add from odRequests collection
     Object.entries(data.odRequests).forEach(([id, req]: any) => {
       allRequests[id] = { ...req, id, source: 'odRequests' }
     })
     
-    // Add from od_requests collection
     Object.entries(data.odRequestsOld).forEach(([id, req]: any) => {
       if (!allRequests[id]) {
         allRequests[id] = { ...req, id, source: 'od_requests' }
       }
     })
     
-    // Add from users' nested odRequests
     Object.entries(data.users).forEach(([userId, user]: any) => {
       if (user.odRequests) {
         Object.entries(user.odRequests).forEach(([odId, req]: any) => {
@@ -555,19 +805,15 @@ export default function AdminDashboard() {
 
   const handleODAction = async (requestId: string, userId: string, status: string) => {
     try {
-      // Find which collection the request belongs to
       const request = data.odRequests[requestId] || data.odRequestsOld[requestId]
       
       if (request) {
-        // Update in the root collection
         const collection = data.odRequests[requestId] ? 'odRequests' : 'od_requests'
         await update(ref(database, `${collection}/${requestId}`), { 
           status: status === 'approved' ? 'approved' : 'rejected',
           reviewedAt: Date.now()
         })
       } else if (userId) {
-        // Update in user's nested object
-        // Check both possible paths
         const userRef = ref(database, `users/${userId}`)
         const userSnapshot = await get(userRef)
         const userData = userSnapshot.val()
@@ -596,6 +842,24 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error("Error updating OD request:", error)
       alert("Failed to update OD request")
+    }
+  }
+
+  const handleUpdateUser = async (updatedUser: any) => {
+    try {
+      const userId = updatedUser.id
+      const updateData = { ...updatedUser }
+      delete updateData.id
+      delete updateData.tickets
+      delete updateData.odRequests
+      delete updateData.od_requests
+      
+      await update(ref(database, `users/${userId}`), updateData)
+      alert(`User ${updatedUser.name} updated successfully!`)
+      setEditingUser(null)
+    } catch (error) {
+      console.error("Error updating user:", error)
+      alert("Failed to update user")
     }
   }
 
@@ -630,6 +894,51 @@ export default function AdminDashboard() {
     alert(`✅ Ticket ${bookingId} assigned to ${userData?.name || 'student'}`)
   }
 
+  const handleDownloadAttendance = async (eventId: string) => {
+    const event = data.events[eventId]
+    if (!event) return
+    
+    const usersRef = ref(database, 'users')
+    const snapshot = await get(usersRef)
+    const users = snapshot.val() || {}
+    
+    const participants: any[] = []
+    
+    Object.entries(users).forEach(([userId, userData]: any) => {
+      if (userData.tickets) {
+        Object.entries(userData.tickets).forEach(([ticketId, ticket]: any) => {
+          if (ticket.eventId === eventId) {
+            participants.push({
+              'Name': userData.name,
+              'Email': userData.email,
+              'Register Number': userData.registerNumber,
+              'Department': userData.department,
+              'Phone': userData.phone,
+              'Status': ticket.status === 'checked_in' ? 'Checked In' : 'Registered',
+              'Check-in Time': ticket.checkedInAt ? new Date(ticket.checkedInAt).toLocaleString() : '-',
+              'Booking ID': ticket.bookingId
+            })
+          }
+        })
+      }
+    })
+    
+    // Create CSV
+    const headers = Object.keys(participants[0] || {})
+    const csvRows = [
+      headers.join(','),
+      ...participants.map(row => headers.map(h => JSON.stringify(row[h] || '')).join(','))
+    ]
+    
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${event.title}_attendance_${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const handleQuickCheckIn = async (bookingId: string) => {
     setScanResult({ loading: true })
     let found = false
@@ -661,7 +970,6 @@ export default function AdminDashboard() {
     }, 3000)
   }
 
-  // CRUD Operations
   const handleSaveEvent = async (formData: any) => {
     if (editingItem?.id) {
       await update(ref(database, `events/${editingItem.id}`), formData)
@@ -845,8 +1153,8 @@ export default function AdminDashboard() {
             <p className="text-gray-400 text-sm mt-1">
               {activeTab === 'overview' && 'Monitor platform activity and manage content'}
               {activeTab === 'odRequests' && `Review and approve On-Duty requests from students (${totalODs} total, ${pendingODs} pending)`}
-              {activeTab === 'users' && 'Manage student accounts and issue tickets'}
-              {activeTab === 'events' && 'Create and manage campus events'}
+              {activeTab === 'users' && 'Manage student accounts, edit profiles, and issue tickets'}
+              {activeTab === 'events' && 'Create and manage campus events with statistics tracking'}
               {activeTab === 'companies' && 'Manage partner companies'}
               {activeTab === 'internships' && 'Post and manage internship opportunities'}
             </p>
@@ -1046,9 +1354,14 @@ export default function AdminDashboard() {
                           <p className="text-gray-400 text-xs">{user.registerNumber || "No register number"}</p>
                         </div>
                       </div>
-                      <button onClick={() => handleDeleteUser(id, user.name)} className="p-2 bg-red-50 rounded-xl text-red-500 hover:bg-red-100 transition">
-                        <Trash2 size={16} />
-                      </button>
+                      <div className="flex gap-2">
+                        <button onClick={() => setEditingUser({ ...user, id })} className="p-2 bg-indigo-50 rounded-xl text-indigo-600 hover:bg-indigo-100 transition" title="Edit User">
+                          <Edit3 size={16} />
+                        </button>
+                        <button onClick={() => handleDeleteUser(id, user.name)} className="p-2 bg-red-50 rounded-xl text-red-500 hover:bg-red-100 transition" title="Delete User">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                     
                     <div className="flex gap-2 mt-3">
@@ -1125,6 +1438,9 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <div className="flex border-t border-gray-50 divide-x divide-gray-50">
+                    <button onClick={() => setSelectedEventForStats(event)} className="flex-1 py-3 text-green-600 font-bold text-sm flex items-center justify-center gap-1 hover:bg-green-50 transition">
+                      <BarChart3 size={14} /> Stats
+                    </button>
                     <button onClick={() => handleEdit(event, id)} className="flex-1 py-3 text-indigo-600 font-bold text-sm flex items-center justify-center gap-1 hover:bg-indigo-50 transition"><Edit3 size={14} /> Edit</button>
                     <button onClick={() => handleDelete('events', id)} className="flex-1 py-3 text-red-500 font-bold text-sm flex items-center justify-center gap-1 hover:bg-red-50 transition"><Trash2 size={14} /> Delete</button>
                   </div>
@@ -1257,6 +1573,25 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* Edit User Modal */}
+      {editingUser && (
+        <EditUserModal 
+          user={editingUser} 
+          colleges={COLLEGES} 
+          onSave={handleUpdateUser} 
+          onClose={() => setEditingUser(null)} 
+        />
+      )}
+
+      {/* Event Statistics Modal */}
+      {selectedEventForStats && (
+        <EventStatisticsModal 
+          event={selectedEventForStats} 
+          onClose={() => setSelectedEventForStats(null)} 
+          onDownloadAttendance={handleDownloadAttendance}
+        />
+      )}
+
       {/* Modals */}
       {modalType === 'events' && (
         <EventModal event={editingItem} colleges={COLLEGES} onSave={handleSaveEvent} onClose={() => { setModalType(null); setEditingItem(null) }} />
@@ -1287,7 +1622,7 @@ export default function AdminDashboard() {
                   <div><span className="text-gray-500">Phone:</span> {selectedUser.phone || 'Not set'}</div>
                   <div><span className="text-gray-500">Department:</span> {selectedUser.department || 'Not set'}</div>
                   <div><span className="text-gray-500">Year:</span> {selectedUser.year || 'Not set'}</div>
-                  <div><span className="text-gray-500">College:</span> {selectedUser.collegeName || 'Not set'}</div>
+                  <div><span className="text-gray-500">College:</span> {selectedUser.collegeName || COLLEGES[selectedUser.collegeId]?.name || 'Not set'}</div>
                 </div>
               </div>
               
