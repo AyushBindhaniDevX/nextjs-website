@@ -30,7 +30,7 @@ const COLLEGES = {
     shortName: 'SRMIST',
     location: 'Chennai, Tamil Nadu',
     domain: '@srmist.edu.in',
-    logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/7/7a/SRM_Institute_of_Science_and_Technology_Logo.svg/1280px-SRM_Institute_of_Science_and_Technology_Logo.svg.png',
+    logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/7/7c/SRM_University_logo.svg/1200px-SRM_University_logo.svg.png',
     primaryColor: '#7C3AED'
   },
   'vit': {
@@ -39,7 +39,7 @@ const COLLEGES = {
     shortName: 'VIT',
     location: 'Vellore, Tamil Nadu',
     domain: '@vit.ac.in',
-    logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/c/c5/Vellore_Institute_of_Technology_seal_2017.svg/1280px-Vellore_Institute_of_Technology_seal_2017.svg.png',
+    logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/2/2b/VIT_University_Logo.svg/1200px-VIT_University_Logo.svg.png',
     primaryColor: '#F59E0B'
   },
   'anna': {
