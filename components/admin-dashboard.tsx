@@ -88,13 +88,13 @@ function Badge({ children, color }: { children: React.ReactNode, color: string }
   )
 }
 
-// OD Request Item Component
-function ODRequestItem({ request, user, event, onAction }: any) {
+// OD Request Item Component with working approve/reject
+function ODRequestItem({ request, user, event, onApprove, onReject }: any) {
   const statusColor = request.status === 'approved' ? 'green' : 
-                      request.status === 'rejected' || request.status === 'Rejected' ? 'red' : 'orange'
+                      request.status === 'rejected' ? 'red' : 'orange'
   const statusText = request.status === 'approved' ? 'Approved' : 
-                     request.status === 'rejected' || request.status === 'Rejected' ? 'Rejected' : 'Pending Review'
-  const isPending = request.status === 'pending' || request.status === 'Pending'
+                     request.status === 'rejected' ? 'Rejected' : 'Pending Review'
+  const isPending = request.status === 'pending'
   
   return (
     <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all">
@@ -129,16 +129,16 @@ function ODRequestItem({ request, user, event, onAction }: any) {
             {isPending && (
               <>
                 <button 
-                  onClick={() => onAction(request.id, request.userId, 'approved')} 
-                  className="px-5 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-green-600 transition flex items-center gap-1"
+                  onClick={() => onApprove(request.id, request.userId)} 
+                  className="px-5 py-2.5 bg-green-600 text-white rounded-xl text-xs font-bold hover:bg-green-700 transition flex items-center gap-1"
                 >
                   <CheckCircle2 size={14} /> Approve
                 </button>
                 <button 
-                  onClick={() => onAction(request.id, request.userId, 'rejected')} 
-                  className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition"
+                  onClick={() => onReject(request.id, request.userId)} 
+                  className="px-5 py-2.5 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700 transition flex items-center gap-1"
                 >
-                  <X size={18} />
+                  <X size={14} /> Reject
                 </button>
               </>
             )}
@@ -258,7 +258,6 @@ function EventStatisticsModal({ event, onClose, onDownloadAttendance }: { event:
     }
   }
 
-  // Check-in data for chart (hourly)
   const getCheckInData = () => {
     const hourly: Record<number, number> = {}
     participants.forEach(p => {
@@ -270,7 +269,6 @@ function EventStatisticsModal({ event, onClose, onDownloadAttendance }: { event:
     return Object.entries(hourly).map(([hour, count]) => ({ hour: `${hour}:00`, count }))
   }
 
-  // Department distribution
   const getDepartmentData = () => {
     const dept: Record<string, number> = {}
     participants.forEach(p => {
@@ -305,7 +303,6 @@ function EventStatisticsModal({ event, onClose, onDownloadAttendance }: { event:
         </div>
         
         <div className="p-6 space-y-6">
-          {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-indigo-50 rounded-2xl p-4 text-center">
               <Users size={24} className="mx-auto text-indigo-600 mb-2" />
@@ -319,7 +316,7 @@ function EventStatisticsModal({ event, onClose, onDownloadAttendance }: { event:
             </div>
             <div className="bg-yellow-50 rounded-2xl p-4 text-center">
               <TrendingUp size={24} className="mx-auto text-yellow-600 mb-2" />
-              <p className="text-2xl font-bold">{Math.round((checkedInCount / registeredCount) * 100) || 0}%</p>
+              <p className="text-2xl font-bold">{registeredCount ? Math.round((checkedInCount / registeredCount) * 100) : 0}%</p>
               <p className="text-xs text-gray-500">Attendance Rate</p>
             </div>
             <div className="bg-purple-50 rounded-2xl p-4 text-center">
@@ -329,7 +326,6 @@ function EventStatisticsModal({ event, onClose, onDownloadAttendance }: { event:
             </div>
           </div>
           
-          {/* Charts */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-gray-50 rounded-2xl p-4">
               <h4 className="font-bold mb-4">Check-in Timeline</h4>
@@ -368,7 +364,6 @@ function EventStatisticsModal({ event, onClose, onDownloadAttendance }: { event:
             </div>
           </div>
           
-          {/* Participants List */}
           <div className="bg-gray-50 rounded-2xl p-4">
             <div className="flex justify-between items-center mb-4">
               <h4 className="font-bold">Registered Participants ({participants.length})</h4>
@@ -717,12 +712,14 @@ export default function AdminDashboard() {
 
     const odRequestsRef = ref(database, 'odRequests')
     const unsubscribeODRequests = onValue(odRequestsRef, (snap) => {
-      setData((prev: any) => ({ ...prev, odRequests: snap.val() || {} }))
+      const odRequests = snap.val() || {}
+      setData((prev: any) => ({ ...prev, odRequests }))
     })
 
     const odRequestsOldRef = ref(database, 'od_requests')
     const unsubscribeODRequestsOld = onValue(odRequestsOldRef, (snap) => {
-      setData((prev: any) => ({ ...prev, odRequestsOld: snap.val() || {} }))
+      const odRequestsOld = snap.val() || {}
+      setData((prev: any) => ({ ...prev, odRequestsOld }))
     })
 
     const usersRef = ref(database, 'users')
@@ -741,10 +738,10 @@ export default function AdminDashboard() {
           totalRevenue += tickets.reduce((sum: number, ticket: any) => sum + (ticket.totalPaid || 0), 0)
         }
         if (userData.odRequests) {
-          pendingODs += Object.values(userData.odRequests).filter((req: any) => req.status === 'pending' || req.status === 'Pending').length
+          pendingODs += Object.values(userData.odRequests).filter((req: any) => req.status === 'pending').length
         }
         if (userData.od_requests) {
-          pendingODs += Object.values(userData.od_requests).filter((req: any) => req.status === 'pending' || req.status === 'Pending').length
+          pendingODs += Object.values(userData.od_requests).filter((req: any) => req.status === 'pending').length
         }
       })
       
@@ -771,30 +768,30 @@ export default function AdminDashboard() {
   const getAllODRequests = () => {
     const allRequests: any = {}
     
+    // From odRequests collection
     Object.entries(data.odRequests).forEach(([id, req]: any) => {
       allRequests[id] = { ...req, id, source: 'odRequests' }
     })
     
+    // From od_requests collection
     Object.entries(data.odRequestsOld).forEach(([id, req]: any) => {
-      if (!allRequests[id]) {
-        allRequests[id] = { ...req, id, source: 'od_requests' }
-      }
+      const key = `old_${id}`
+      allRequests[key] = { ...req, id: key, originalId: id, source: 'od_requests' }
     })
     
+    // From users' nested odRequests
     Object.entries(data.users).forEach(([userId, user]: any) => {
       if (user.odRequests) {
         Object.entries(user.odRequests).forEach(([odId, req]: any) => {
-          const uniqueId = `${userId}_${odId}`
-          if (!allRequests[uniqueId]) {
-            allRequests[uniqueId] = { ...req, id: uniqueId, userId, source: 'user_odRequests' }
-          }
+          const uniqueId = `user_${userId}_${odId}`
+          allRequests[uniqueId] = { ...req, id: uniqueId, userId, originalOdId: odId, source: 'user_odRequests' }
         })
       }
       if (user.od_requests) {
         Object.entries(user.od_requests).forEach(([odId, req]: any) => {
-          const uniqueId = `${userId}_${odId}`
+          const uniqueId = `user_${userId}_${odId}`
           if (!allRequests[uniqueId]) {
-            allRequests[uniqueId] = { ...req, id: uniqueId, userId, source: 'user_od_requests' }
+            allRequests[uniqueId] = { ...req, id: uniqueId, userId, originalOdId: odId, source: 'user_od_requests' }
           }
         })
       }
@@ -803,45 +800,163 @@ export default function AdminDashboard() {
     return allRequests
   }
 
-  const handleODAction = async (requestId: string, userId: string, status: string) => {
+  // FIXED: Approve OD Request - Works for all locations
+  const handleApproveOD = async (requestId: string, userId: string) => {
     try {
-      const request = data.odRequests[requestId] || data.odRequestsOld[requestId]
+      const allODs = getAllODRequests()
+      const request = allODs[requestId]
       
-      if (request) {
-        const collection = data.odRequests[requestId] ? 'odRequests' : 'od_requests'
-        await update(ref(database, `${collection}/${requestId}`), { 
-          status: status === 'approved' ? 'approved' : 'rejected',
-          reviewedAt: Date.now()
+      if (!request) {
+        alert("Request not found!")
+        return
+      }
+      
+      // Handle based on source
+      if (request.source === 'odRequests') {
+        await update(ref(database, `odRequests/${requestId}`), { 
+          status: 'approved',
+          reviewedAt: Date.now(),
+          reviewedBy: 'admin'
         })
-      } else if (userId) {
+      } 
+      else if (request.source === 'od_requests') {
+        await update(ref(database, `od_requests/${request.originalId}`), { 
+          status: 'approved',
+          reviewedAt: Date.now(),
+          reviewedBy: 'admin'
+        })
+      }
+      else if (request.source === 'user_odRequests' && userId) {
+        await update(ref(database, `users/${userId}/odRequests/${request.originalOdId}`), { 
+          status: 'approved',
+          reviewedAt: Date.now(),
+          reviewedBy: 'admin'
+        })
+      }
+      else if (request.source === 'user_od_requests' && userId) {
+        await update(ref(database, `users/${userId}/od_requests/${request.originalOdId}`), { 
+          status: 'approved',
+          reviewedAt: Date.now(),
+          reviewedBy: 'admin'
+        })
+      }
+      else {
+        // Try fallback - search in user's odRequests
         const userRef = ref(database, `users/${userId}`)
-        const userSnapshot = await get(userRef)
-        const userData = userSnapshot.val()
+        const userSnap = await get(userRef)
+        const userData = userSnap.val()
         
+        let found = false
         if (userData?.odRequests) {
-          const odId = requestId.split('_')[1]
-          if (userData.odRequests[odId]) {
-            await update(ref(database, `users/${userId}/odRequests/${odId}`), { 
-              status: status === 'approved' ? 'approved' : 'rejected',
-              reviewedAt: Date.now()
-            })
+          const odEntry = Object.entries(userData.odRequests).find(([_, req]: any) => req.status === 'pending')
+          if (odEntry) {
+            await update(ref(database, `users/${userId}/odRequests/${odEntry[0]}`), { status: 'approved' })
+            found = true
           }
         }
-        if (userData?.od_requests) {
-          const odId = requestId.split('_')[1]
-          if (userData.od_requests[odId]) {
-            await update(ref(database, `users/${userId}/od_requests/${odId}`), { 
-              status: status === 'approved' ? 'approved' : 'rejected',
-              reviewedAt: Date.now()
-            })
+        if (!found && userData?.od_requests) {
+          const odEntry = Object.entries(userData.od_requests).find(([_, req]: any) => req.status === 'pending')
+          if (odEntry) {
+            await update(ref(database, `users/${userId}/od_requests/${odEntry[0]}`), { status: 'approved' })
+            found = true
           }
+        }
+        if (!found) {
+          alert("Could not find OD request to update")
+          return
         }
       }
       
-      alert(`OD Request ${status === 'approved' ? 'Approved' : 'Rejected'}!`)
+      alert("✅ OD Request Approved successfully!")
+      
+      // Refresh data
+      const usersRef = ref(database, 'users')
+      const usersSnap = await get(usersRef)
+      setData((prev: any) => ({ ...prev, users: usersSnap.val() || {} }))
+      
     } catch (error) {
-      console.error("Error updating OD request:", error)
-      alert("Failed to update OD request")
+      console.error("Error approving OD request:", error)
+      alert("Failed to approve OD request. Please try again.")
+    }
+  }
+
+  // FIXED: Reject OD Request - Works for all locations
+  const handleRejectOD = async (requestId: string, userId: string) => {
+    try {
+      const allODs = getAllODRequests()
+      const request = allODs[requestId]
+      
+      if (!request) {
+        alert("Request not found!")
+        return
+      }
+      
+      // Handle based on source
+      if (request.source === 'odRequests') {
+        await update(ref(database, `odRequests/${requestId}`), { 
+          status: 'rejected',
+          reviewedAt: Date.now(),
+          reviewedBy: 'admin'
+        })
+      } 
+      else if (request.source === 'od_requests') {
+        await update(ref(database, `od_requests/${request.originalId}`), { 
+          status: 'rejected',
+          reviewedAt: Date.now(),
+          reviewedBy: 'admin'
+        })
+      }
+      else if (request.source === 'user_odRequests' && userId) {
+        await update(ref(database, `users/${userId}/odRequests/${request.originalOdId}`), { 
+          status: 'rejected',
+          reviewedAt: Date.now(),
+          reviewedBy: 'admin'
+        })
+      }
+      else if (request.source === 'user_od_requests' && userId) {
+        await update(ref(database, `users/${userId}/od_requests/${request.originalOdId}`), { 
+          status: 'rejected',
+          reviewedAt: Date.now(),
+          reviewedBy: 'admin'
+        })
+      }
+      else {
+        // Try fallback - search in user's odRequests
+        const userRef = ref(database, `users/${userId}`)
+        const userSnap = await get(userRef)
+        const userData = userSnap.val()
+        
+        let found = false
+        if (userData?.odRequests) {
+          const odEntry = Object.entries(userData.odRequests).find(([_, req]: any) => req.status === 'pending')
+          if (odEntry) {
+            await update(ref(database, `users/${userId}/odRequests/${odEntry[0]}`), { status: 'rejected' })
+            found = true
+          }
+        }
+        if (!found && userData?.od_requests) {
+          const odEntry = Object.entries(userData.od_requests).find(([_, req]: any) => req.status === 'pending')
+          if (odEntry) {
+            await update(ref(database, `users/${userId}/od_requests/${odEntry[0]}`), { status: 'rejected' })
+            found = true
+          }
+        }
+        if (!found) {
+          alert("Could not find OD request to update")
+          return
+        }
+      }
+      
+      alert("❌ OD Request Rejected!")
+      
+      // Refresh data
+      const usersRef = ref(database, 'users')
+      const usersSnap = await get(usersRef)
+      setData((prev: any) => ({ ...prev, users: usersSnap.val() || {} }))
+      
+    } catch (error) {
+      console.error("Error rejecting OD request:", error)
+      alert("Failed to reject OD request. Please try again.")
     }
   }
 
@@ -923,7 +1038,6 @@ export default function AdminDashboard() {
       }
     })
     
-    // Create CSV
     const headers = Object.keys(participants[0] || {})
     const csvRows = [
       headers.join(','),
@@ -1090,7 +1204,7 @@ export default function AdminDashboard() {
   const allODs = getAllODRequests()
   const totalODs = Object.keys(allODs).length
   const pendingODs = Object.values(allODs).filter((req: any) => 
-    req.status === 'pending' || req.status === 'Pending'
+    req.status === 'pending'
   ).length
 
   const sidebarTabs = [
@@ -1259,22 +1373,23 @@ export default function AdminDashboard() {
                 <button onClick={() => setActiveTab('odRequests')} className="text-indigo-600 text-sm font-bold">View All →</button>
               </div>
               
-              {Object.values(allODs).filter((req: any) => req.status === 'pending' || req.status === 'Pending').slice(0, 5).length > 0 ? (
+              {Object.values(allODs).filter((req: any) => req.status === 'pending').slice(0, 5).length > 0 ? (
                 <div className="space-y-3">
                   {Object.values(allODs)
-                    .filter((req: any) => req.status === 'pending' || req.status === 'Pending')
+                    .filter((req: any) => req.status === 'pending')
                     .slice(0, 5)
                     .map((req: any, idx: number) => {
                       const user = data.users[req.userId]
+                      const event = data.events[req.eventId]
                       return (
                         <div key={idx} className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl">
                           <div>
                             <p className="font-bold text-gray-800">{user?.name || req.userName || 'Unknown'}</p>
-                            <p className="text-xs text-gray-500">{req.eventTitle}</p>
+                            <p className="text-xs text-gray-500">{event?.title || req.eventTitle}</p>
                           </div>
                           <div className="flex gap-2">
-                            <button onClick={() => handleODAction(req.id, req.userId, 'approved')} className="px-3 py-1.5 bg-green-600 text-white text-xs rounded-lg">Approve</button>
-                            <button onClick={() => handleODAction(req.id, req.userId, 'rejected')} className="px-3 py-1.5 bg-red-600 text-white text-xs rounded-lg">Reject</button>
+                            <button onClick={() => handleApproveOD(req.id, req.userId)} className="px-3 py-1.5 bg-green-600 text-white text-xs rounded-lg">Approve</button>
+                            <button onClick={() => handleRejectOD(req.id, req.userId)} className="px-3 py-1.5 bg-red-600 text-white text-xs rounded-lg">Reject</button>
                           </div>
                         </div>
                       )
@@ -1303,7 +1418,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* OD Requests Tab */}
+        {/* OD Requests Tab - WITH WORKING APPROVE/REJECT */}
         {activeTab === 'odRequests' && (
           <div className="space-y-5">
             {filteredData.length === 0 ? (
@@ -1322,7 +1437,8 @@ export default function AdminDashboard() {
                     request={req} 
                     user={user} 
                     event={event}
-                    onAction={handleODAction} 
+                    onApprove={handleApproveOD}
+                    onReject={handleRejectOD}
                   />
                 )
               })
@@ -1650,23 +1766,26 @@ export default function AdminDashboard() {
               
               <div className="bg-gray-50 rounded-2xl p-4">
                 <h4 className="font-bold mb-3">📋 OD Requests</h4>
-                {selectedUser.odRequests && Object.values(selectedUser.odRequests).length > 0 ? (
-                  <div className="space-y-2">
-                    {Object.values(selectedUser.odRequests).map((request: any, idx: number) => (
-                      <div key={idx} className="flex justify-between items-center p-3 bg-white rounded-xl">
-                        <div>
-                          <p className="font-semibold text-sm">{request.eventTitle}</p>
-                          <p className="text-xs text-gray-500">Requested: {new Date(request.createdAt).toLocaleDateString()}</p>
+                <div className="space-y-2">
+                  {(() => {
+                    const allUserODs = [...(selectedUser.odRequests ? Object.values(selectedUser.odRequests) : []), ...(selectedUser.od_requests ? Object.values(selectedUser.od_requests) : [])]
+                    if (allUserODs.length > 0) {
+                      return allUserODs.map((request: any, idx: number) => (
+                        <div key={idx} className="flex justify-between items-center p-3 bg-white rounded-xl">
+                          <div>
+                            <p className="font-semibold text-sm">{request.eventTitle}</p>
+                            <p className="text-xs text-gray-500">Requested: {new Date(request.createdAt).toLocaleDateString()}</p>
+                          </div>
+                          <Badge color={request.status === 'approved' ? 'green' : request.status === 'rejected' ? 'red' : 'orange'}>
+                            {request.status || 'pending'}
+                          </Badge>
                         </div>
-                        <Badge color={request.status === 'approved' ? 'green' : request.status === 'rejected' ? 'red' : 'orange'}>
-                          {request.status || 'pending'}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-400 text-center py-4">No OD requests yet</p>
-                )}
+                      ))
+                    } else {
+                      return <p className="text-gray-400 text-center py-4">No OD requests yet</p>
+                    }
+                  })()}
+                </div>
               </div>
             </div>
             
