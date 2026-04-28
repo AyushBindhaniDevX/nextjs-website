@@ -22,7 +22,7 @@ import {
 const ADMIN_PIN = "5152"
 const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=800&auto=format&fit=crop"
 
-// College configurations
+// College configurations with FIXED LOGOS
 const COLLEGES = {
   'srmist': {
     id: 'srmist',
@@ -88,13 +88,14 @@ function Badge({ children, color }: { children: React.ReactNode, color: string }
   )
 }
 
-// OD Request Item Component with working approve/reject
+// OD Request Item Component
 function ODRequestItem({ request, user, event, onApprove, onReject }: any) {
   const statusColor = request.status === 'approved' ? 'green' : 
                       request.status === 'rejected' ? 'red' : 'orange'
   const statusText = request.status === 'approved' ? 'Approved' : 
                      request.status === 'rejected' ? 'Rejected' : 'Pending Review'
   const isPending = request.status === 'pending'
+  const college = COLLEGES[user?.collegeId]
   
   return (
     <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all">
@@ -115,7 +116,14 @@ function ODRequestItem({ request, user, event, onApprove, onReject }: any) {
               <span className="flex items-center gap-1"><Mail size={12} /> {user?.email || 'No Email'}</span>
               <span className="flex items-center gap-1"><Phone size={12} /> {user?.phone || request.userPhone || 'No Phone'}</span>
               <span className="flex items-center gap-1"><Award size={12} /> {user?.registerNumber || request.registerNumber || 'No Register No'}</span>
-              <span className="flex items-center gap-1"><School size={12} /> {user?.collegeName || COLLEGES[user?.collegeId]?.shortName || request.collegeName || 'Unknown College'}</span>
+              <span className="flex items-center gap-1">
+                {college?.logo ? (
+                  <img src={college.logo} className="w-4 h-4 rounded-full object-contain" alt="college" />
+                ) : (
+                  <School size={12} />
+                )}
+                {college?.name || user?.collegeName || request.collegeName || 'Unknown College'}
+              </span>
             </div>
             {request.eventDateTime && (
               <p className="text-gray-500 text-xs mt-2 flex items-center gap-1"><Clock size={10} /> Event on: {new Date(request.eventDateTime).toLocaleString()}</p>
@@ -383,7 +391,7 @@ function EventStatisticsModal({ event, onClose, onDownloadAttendance }: { event:
                     <th className="pb-2">Department</th>
                     <th className="pb-2">Status</th>
                     <th className="pb-2">Check-in Time</th>
-                  </tr>
+                  </td>
                 </thead>
                 <tbody>
                   {participants.map((p, idx) => (
@@ -448,6 +456,8 @@ function EventModal({ event, colleges, onSave, onClose }: { event: any; colleges
     setForm({ ...form, tickets: updated })
   }
 
+  const selectedCollege = colleges[form.collegeId]
+  
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-auto" onClick={onClose}>
       <div className="bg-white rounded-3xl max-w-2xl w-full p-6 max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
@@ -460,6 +470,13 @@ function EventModal({ event, colleges, onSave, onClose }: { event: any; colleges
               <option key={id} value={id}>{college.name}</option>
             ))}
           </select>
+          
+          {selectedCollege && (
+            <div className="flex items-center gap-2 p-2 bg-indigo-50 rounded-xl">
+              <img src={selectedCollege.logo} className="w-6 h-6 rounded-full object-contain" alt={selectedCollege.name} />
+              <span className="text-sm text-gray-600">Event for {selectedCollege.name}</span>
+            </div>
+          )}
           
           <input name="title" value={form.title} onChange={handleChange} placeholder="Event Title" className="w-full p-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-200" />
           <input name="category" value={form.category} onChange={handleChange} placeholder="Category" className="w-full p-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-200" />
@@ -800,7 +817,7 @@ export default function AdminDashboard() {
     return allRequests
   }
 
-  // FIXED: Approve OD Request - Works for all locations
+  // Approve OD Request
   const handleApproveOD = async (requestId: string, userId: string) => {
     try {
       const allODs = getAllODRequests()
@@ -841,7 +858,7 @@ export default function AdminDashboard() {
         })
       }
       else {
-        // Try fallback - search in user's odRequests
+        // Try fallback
         const userRef = ref(database, `users/${userId}`)
         const userSnap = await get(userRef)
         const userData = userSnap.val()
@@ -880,7 +897,7 @@ export default function AdminDashboard() {
     }
   }
 
-  // FIXED: Reject OD Request - Works for all locations
+  // Reject OD Request
   const handleRejectOD = async (requestId: string, userId: string) => {
     try {
       const allODs = getAllODRequests()
@@ -921,7 +938,7 @@ export default function AdminDashboard() {
         })
       }
       else {
-        // Try fallback - search in user's odRequests
+        // Try fallback
         const userRef = ref(database, `users/${userId}`)
         const userSnap = await get(userRef)
         const userData = userSnap.val()
@@ -1283,7 +1300,7 @@ export default function AdminDashboard() {
               >
                 <option value="all">All Colleges</option>
                 {Object.entries(COLLEGES).map(([id, college]: any) => (
-                  <option key={id} value={id}>{college.shortName}</option>
+                  <option key={id} value={id}>{college.name}</option>
                 ))}
               </select>
             )}
@@ -1400,29 +1417,38 @@ export default function AdminDashboard() {
               )}
             </div>
             
-           // Inside the Overview Dashboard section, replace the College-wise Statistics part:
-
-<div className="bg-white rounded-3xl p-6 border border-gray-100">
-  <h3 className="font-black text-xl mb-4">College-wise Statistics</h3>
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-    {Object.entries(COLLEGES).map(([id, college]: any) => {
-      const collegeUsers = Object.values(data.users).filter((user: any) => user.collegeId === id).length
-      return (
-        <div key={id} className="text-center p-4 bg-gray-50 rounded-2xl hover:shadow-md transition">
-          <img src={college.logo} alt={college.name} className="w-16 h-16 mx-auto mb-3 rounded-full object-contain" />
-          <p className="font-bold text-sm">{college.name}</p>
-          <p className="text-xs text-gray-500 mt-1">📍 {college.location}</p>
-          <div className="mt-2 flex items-center justify-center gap-2">
-            <span className="text-2xl font-bold text-indigo-600">{collegeUsers}</span>
-            <span className="text-xs text-gray-400">students</span>
+            {/* College-wise Statistics - WITH FULL NAMES AND LOGOS */}
+            <div className="bg-white rounded-3xl p-6 border border-gray-100">
+              <h3 className="font-black text-xl mb-4">College-wise Statistics</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                {Object.entries(COLLEGES).map(([id, college]: any) => {
+                  const collegeUsers = Object.values(data.users).filter((user: any) => user.collegeId === id).length
+                  return (
+                    <div key={id} className="text-center p-4 bg-gray-50 rounded-2xl hover:shadow-md transition">
+                      <img 
+                        src={college.logo} 
+                        alt={college.name} 
+                        className="w-16 h-16 mx-auto mb-3 rounded-full object-contain"
+                        onError={(e) => {
+                          // Fallback if logo fails to load
+                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/64?text=College'
+                        }}
+                      />
+                      <p className="font-bold text-sm">{college.name}</p>
+                      <p className="text-xs text-gray-500 mt-1">📍 {college.location}</p>
+                      <div className="mt-2 flex items-center justify-center gap-2">
+                        <span className="text-2xl font-bold text-indigo-600">{collegeUsers}</span>
+                        <span className="text-xs text-gray-400">students</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           </div>
-        </div>
-      )
-    })}
-  </div>
-</div>
+        )}
 
-        {/* OD Requests Tab - WITH WORKING APPROVE/REJECT */}
+        {/* OD Requests Tab */}
         {activeTab === 'odRequests' && (
           <div className="space-y-5">
             {filteredData.length === 0 ? (
@@ -1467,8 +1493,9 @@ export default function AdminDashboard() {
                         <p className="text-gray-500 text-sm">{user.email || "No email"}</p>
                         <div className="flex items-center gap-2 mt-1">
                           {college && (
-                            <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full flex items-center gap-1">
-                              <School size={10} /> {college.shortName}
+                            <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full flex items-center gap-1" title={college.name}>
+                              <img src={college.logo} className="w-3 h-3 rounded-full object-contain" alt="" />
+                              {college.name}
                             </span>
                           )}
                           <p className="text-gray-400 text-xs">{user.registerNumber || "No register number"}</p>
@@ -1531,7 +1558,7 @@ export default function AdminDashboard() {
                     <div className="absolute top-3 left-3">
                       {college && (
                         <div className="bg-black/60 backdrop-blur-sm rounded-lg px-2 py-1 flex items-center gap-1">
-                          <img src={college.logo} className="w-4 h-4 rounded-full" />
+                          <img src={college.logo} className="w-4 h-4 rounded-full" alt="" />
                           <span className="text-white text-[10px] font-bold">{college.shortName}</span>
                         </div>
                       )}
