@@ -1400,23 +1400,27 @@ export default function AdminDashboard() {
               )}
             </div>
             
-            <div className="bg-white rounded-3xl p-6 border border-gray-100">
-              <h3 className="font-black text-xl mb-4">College-wise Statistics</h3>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {Object.entries(COLLEGES).map(([id, college]: any) => {
-                  const collegeUsers = Object.values(data.users).filter((user: any) => user.collegeId === id).length
-                  return (
-                    <div key={id} className="text-center p-4 bg-gray-50 rounded-2xl">
-                      <img src={college.logo} alt={college.shortName} className="w-12 h-12 mx-auto mb-2 rounded-full object-contain" />
-                      <p className="font-bold text-sm">{college.shortName}</p>
-                      <p className="text-xs text-gray-500">{collegeUsers} students</p>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
+           // Inside the Overview Dashboard section, replace the College-wise Statistics part:
+
+<div className="bg-white rounded-3xl p-6 border border-gray-100">
+  <h3 className="font-black text-xl mb-4">College-wise Statistics</h3>
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+    {Object.entries(COLLEGES).map(([id, college]: any) => {
+      const collegeUsers = Object.values(data.users).filter((user: any) => user.collegeId === id).length
+      return (
+        <div key={id} className="text-center p-4 bg-gray-50 rounded-2xl hover:shadow-md transition">
+          <img src={college.logo} alt={college.name} className="w-16 h-16 mx-auto mb-3 rounded-full object-contain" />
+          <p className="font-bold text-sm">{college.name}</p>
+          <p className="text-xs text-gray-500 mt-1">📍 {college.location}</p>
+          <div className="mt-2 flex items-center justify-center gap-2">
+            <span className="text-2xl font-bold text-indigo-600">{collegeUsers}</span>
+            <span className="text-xs text-gray-400">students</span>
           </div>
-        )}
+        </div>
+      )
+    })}
+  </div>
+</div>
 
         {/* OD Requests Tab - WITH WORKING APPROVE/REJECT */}
         {activeTab === 'odRequests' && (
